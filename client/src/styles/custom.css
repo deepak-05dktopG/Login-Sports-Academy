@@ -1,0 +1,739 @@
+/*
+  Global theme — Login Swim Academy (aquatic redesign)
+  Keep Bootstrap; layer a custom design system on top.
+*/
+
+:root {
+  --ocean-950: #061826;
+  --ocean-900: #08263d;
+  --ocean-800: #0b3552;
+  --ocean-700: #0b4b6f;
+  --aqua-600: #0aa2b6;
+  --aqua-500: #0bb3c8;
+  --aqua-300: #62d8e6;
+
+  --foam-50: #f5fbff;
+  --foam-100: #eaf6ff;
+  --ink-900: #09121a;
+  --ink-700: #1c2a36;
+  --line: rgba(6, 24, 38, 0.12);
+
+  --radius-xl: 22px;
+  --radius-lg: 16px;
+  --radius-md: 12px;
+
+  --shadow-soft: 0 18px 50px rgba(6, 24, 38, 0.18);
+  --shadow-card: 0 14px 34px rgba(6, 24, 38, 0.12);
+
+  --grad-ocean: radial-gradient(1200px 500px at 20% 10%, rgba(98, 216, 230, 0.22), transparent 60%),
+    radial-gradient(900px 520px at 85% 15%, rgba(11, 179, 200, 0.18), transparent 55%),
+    linear-gradient(135deg, var(--ocean-950), var(--ocean-800) 55%, var(--ocean-700));
+
+  --font-body: 'Plus Jakarta Sans', system-ui, -apple-system, Segoe UI, Roboto, Arial, sans-serif;
+  --font-display: 'Space Grotesk', 'Plus Jakarta Sans', system-ui, -apple-system, Segoe UI, Roboto, Arial, sans-serif;
+
+  --pool-tile-1: rgba(245, 251, 255, 0.85);
+  --pool-tile-2: rgba(98, 216, 230, 0.18);
+  --pool-line: rgba(6, 24, 38, 0.08);
+
+  --tint-aqua-1: rgba(98, 216, 230, 0.18);
+  --tint-aqua-2: rgba(11, 179, 200, 0.14);
+
+  /* Motion */
+  --ease-out: cubic-bezier(0.2, 0.8, 0.2, 1);
+  --ease-soft: cubic-bezier(0.22, 1, 0.36, 1);
+  --dur-1: 140ms;
+  --dur-2: 220ms;
+  --dur-3: 420ms;
+  --stagger: 70ms;
+
+  /* Layout gutter (used on mobile for comfortable left/right spacing) */
+  --page-gutter: 0px;
+}
+
+html {
+  scroll-behavior: smooth;
+}
+
+/* Smooth, modern micro-interactions (kept subtle) */
+a,
+button,
+.btn,
+input,
+textarea,
+select {
+  transition:
+    transform var(--dur-2) var(--ease-out),
+    box-shadow var(--dur-2) var(--ease-out),
+    background-color var(--dur-2) var(--ease-out),
+    border-color var(--dur-2) var(--ease-out),
+    color var(--dur-2) var(--ease-out),
+    filter var(--dur-2) var(--ease-out),
+    opacity var(--dur-2) var(--ease-out);
+}
+
+/* Prevent layout shift on hover while still feeling responsive */
+.btn,
+button {
+  will-change: transform;
+}
+
+/* Cards/surfaces lift slightly on hover */
+.surface {
+  transition:
+    transform var(--dur-2) var(--ease-out),
+    box-shadow var(--dur-2) var(--ease-out),
+    border-color var(--dur-2) var(--ease-out);
+}
+
+.surface:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 18px 46px rgba(6, 24, 38, 0.16);
+}
+
+/* Images feel a bit more premium on hover without being flashy */
+.ripple-hover img {
+  transition: transform var(--dur-3) var(--ease-soft), filter var(--dur-3) var(--ease-soft);
+}
+
+.ripple-hover:hover img {
+  transform: scale(1.015);
+  filter: saturate(1.03);
+}
+
+html,
+body {
+  max-width: 100%;
+  overflow-x: hidden;
+}
+
+body {
+  font-family: var(--font-body);
+  color: var(--ink-900);
+  background:
+    radial-gradient(900px 460px at 20% 15%, rgba(11, 179, 200, 0.22), transparent 55%),
+    radial-gradient(800px 520px at 80% 18%, rgba(98, 216, 230, 0.25), transparent 60%),
+    repeating-linear-gradient(0deg, var(--pool-line) 0 1px, transparent 1px 52px),
+    repeating-linear-gradient(90deg, var(--pool-line) 0 1px, transparent 1px 52px),
+    linear-gradient(135deg, var(--pool-tile-1), var(--pool-tile-2));
+}
+
+img,
+video,
+canvas {
+  max-width: 100%;
+  height: auto;
+}
+
+.main-content {
+  min-height: calc(100vh - 220px);
+}
+
+/* Typography */
+h1,
+h2,
+h3,
+h4,
+h5,
+h6 {
+  font-weight: 800;
+  letter-spacing: -0.02em;
+  font-family: var(--font-display);
+}
+
+/* Buttons */
+.btn-ocean {
+  border: 0;
+  border-radius: 999px;
+  padding: 0.7rem 1.1rem;
+  font-weight: 800;
+  color: #fff;
+  background: linear-gradient(135deg, var(--ocean-900), var(--ocean-700), var(--aqua-500));
+  box-shadow: 0 12px 26px rgba(11, 179, 200, 0.16);
+}
+
+.btn-ocean:hover {
+  color: #fff;
+  filter: saturate(1.08);
+  transform: translateY(-1px);
+}
+
+.btn-ocean:active {
+  transform: translateY(0px);
+  filter: saturate(1.02);
+}
+
+.btn-foam {
+  border-radius: 999px;
+  padding: 0.7rem 1.1rem;
+  font-weight: 800;
+  background: rgba(245, 251, 255, 0.92);
+  border: 1px solid rgba(11, 179, 200, 0.22);
+  color: var(--ocean-900);
+}
+
+.btn-foam:hover {
+  background: #fff;
+  transform: translateY(-1px);
+}
+
+.btn-foam:active {
+  transform: translateY(0px);
+}
+
+/* Surfaces */
+.surface {
+  background: linear-gradient(180deg, rgba(245, 251, 255, 0.92), rgba(234, 246, 255, 0.84));
+  border: 1px solid var(--line);
+  border-radius: var(--radius-xl);
+  box-shadow: var(--shadow-card);
+}
+
+.surface--glass {
+  background: rgba(245, 251, 255, 0.8);
+  backdrop-filter: blur(12px);
+}
+
+/* Ripple hover */
+/* (disabled) */
+.ripple-hover::after {
+  content: none;
+}
+
+/* Scroll reveal */
+.reveal {
+  opacity: 0;
+  transform: translate3d(0, 14px, 0);
+  transition:
+    opacity var(--dur-3) var(--ease-soft),
+    transform var(--dur-3) var(--ease-soft);
+  will-change: opacity, transform;
+}
+
+.reveal.is-revealed {
+  opacity: 1;
+  transform: none;
+}
+
+/* Variants (optional): set data-reveal="left|right|down|scale" */
+.reveal[data-reveal='left'] {
+  transform: translate3d(-14px, 0, 0);
+}
+.reveal[data-reveal='right'] {
+  transform: translate3d(14px, 0, 0);
+}
+.reveal[data-reveal='down'] {
+  transform: translate3d(0, -14px, 0);
+}
+.reveal[data-reveal='scale'] {
+  transform: translate3d(0, 10px, 0) scale(0.985);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  html {
+    scroll-behavior: auto;
+  }
+  *,
+  *::before,
+  *::after {
+    animation: none !important;
+    transition: none !important;
+  }
+  .reveal {
+    opacity: 1;
+    transform: none;
+  }
+  .ripple-hover::after {
+    transition: none;
+  }
+}
+
+/* Layout helpers */
+.hero-ocean {
+  background: var(--grad-ocean);
+  color: #fff;
+}
+
+.hero-pool {
+  background:
+    linear-gradient(135deg, rgba(6, 24, 38, 0.88), rgba(11, 53, 82, 0.72) 55%, rgba(10, 162, 182, 0.55)),
+    url('https://images.unsplash.com/photo-1576013551627-0cc20b96c2a7?auto=format&fit=crop&w=2400&q=80');
+  background-position: center;
+  background-size: cover;
+  background-repeat: no-repeat;
+  color: #fff;
+}
+
+.section-pad {
+  padding: 72px 0;
+}
+
+@media (max-width: 768px) {
+  .section-pad {
+    padding: 54px 0;
+  }
+}
+
+/* Admin panel responsive helpers (kept intentionally small) */
+.admin-page-container {
+  padding: 28px;
+  max-width: 1400px;
+  margin: 0 auto;
+}
+
+@media (max-width: 768px) {
+  .admin-page-container {
+    padding: 18px !important;
+  }
+}
+
+.admin-filter-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+  gap: 12px;
+  align-items: end;
+}
+  @media (max-width: 480px) {
+    .admin-filter-grid {
+      grid-template-columns: 1fr;
+    }
+  }
+
+.admin-filter-span-2 {
+  grid-column: span 2;
+}
+
+@media (max-width: 768px) {
+  .admin-filter-span-2 {
+    grid-column: 1 / -1;
+  }
+}
+
+.admin-filter-summary {
+  grid-column: 1 / -1;
+  justify-self: end;
+}
+
+/* Attendance Scanner layout (80/20 on desktop, stacked on mobile) */
+.attendance-scan-layout {
+  display: flex;
+  gap: 20px;
+  align-items: stretch;
+}
+
+.attendance-scan-camera {
+  flex: 4 1 0;
+  min-width: 320px;
+}
+
+.attendance-scan-side {
+  flex: 1 1 320px;
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
+}
+
+@media (max-width: 900px) {
+  .attendance-scan-layout {
+    flex-direction: column;
+  }
+
+  .attendance-scan-camera,
+  .attendance-scan-side {
+    min-width: 0;
+  }
+}
+
+/* Admin navbar responsiveness */
+@media (max-width: 768px) {
+  .admin-navbar__inner {
+    flex-direction: column;
+    align-items: stretch;
+  }
+
+  .admin-navbar__brand {
+    justify-content: center;
+  }
+
+  .admin-navbar__links {
+    justify-content: center;
+  }
+  .admin-navbar__inner {
+    flex-wrap: wrap;
+  }
+
+  /* Keep admin links usable on small screens without wrapping into tall stacks */
+  .admin-navbar__links {
+    width: 100%;
+    overflow-x: auto;
+    -webkit-overflow-scrolling: touch;
+    padding-bottom: 6px;
+    flex-wrap: nowrap !important;
+  }
+
+  .admin-navbar__links > a,
+  .admin-navbar__links > button {
+    flex: 0 0 auto;
+    white-space: nowrap;
+  }
+
+  /* Reduce horizontal scrolling required on admin tables (still scrollable) */
+  table.admin-table--members {
+    min-width: 980px !important;
+  }
+}
+
+@media (max-width: 480px) {
+  .admin-navbar__brand {
+    justify-content: flex-start;
+  }
+
+  .admin-navbar__links {
+    justify-content: flex-start;
+  }
+}
+
+/* =============================
+   Membership — dashboard styles
+   ============================= */
+
+.membership-page {
+  background: var(--grad-ocean);
+  color: #fff;
+}
+
+.membership-shell {
+  background: rgba(0, 0, 0, 0.22);
+  border: 1px solid rgba(255, 255, 255, 0.16);
+  border-radius: 14px;
+  backdrop-filter: blur(10px);
+}
+
+.membership-container {
+  padding-top: 104px;
+  padding-bottom: 44px;
+}
+
+.membership-grid {
+  display: grid;
+  grid-template-columns: minmax(0, 1.55fr) minmax(320px, 0.95fr);
+  gap: 16px;
+  align-items: start;
+}
+
+@media (max-width: 991.98px) {
+  .membership-container {
+    padding-top: 92px;
+    padding-bottom: 32px;
+  }
+
+  .membership-grid {
+    grid-template-columns: 1fr;
+  }
+}
+
+.membership-header {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 12px;
+  flex-wrap: wrap;
+}
+
+.membership-title {
+  color: #fff;
+  margin: 0;
+  font-weight: 800;
+  letter-spacing: 0.2px;
+}
+
+.membership-subtitle {
+  color: rgba(255, 255, 255, 0.82);
+  margin-top: 4px;
+  font-size: 13px;
+  max-width: 70ch;
+}
+
+.membership-progress {
+  height: 8px;
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.12);
+  overflow: hidden;
+  border: 1px solid rgba(255, 255, 255, 0.18);
+}
+
+.membership-progress-bar {
+  height: 100%;
+  background: linear-gradient(90deg, rgba(72, 202, 228, 0.95), rgba(0, 180, 216, 0.95));
+  transition: width 240ms ease;
+}
+
+.membership-card {
+  background: rgba(255, 255, 255, 0.1);
+  border-radius: 12px;
+  border: 1px solid rgba(255, 255, 255, 0.14);
+  padding: 14px;
+}
+
+@media (min-width: 768px) {
+  .membership-card {
+    padding: 16px;
+  }
+}
+
+.membership-aside-inner {
+  position: sticky;
+  top: 96px;
+  display: grid;
+  gap: 12px;
+}
+
+@media (max-width: 991.98px) {
+  .membership-aside-inner {
+    position: static;
+  }
+}
+
+.membership-step-tabs {
+  display: flex;
+  gap: 10px;
+  flex-wrap: wrap;
+}
+
+.membership-step-tab {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  border-radius: 999px;
+  border: 1px solid rgba(255, 255, 255, 0.18);
+  background: rgba(0, 0, 0, 0.14);
+  color: rgba(255, 255, 255, 0.86);
+  padding: 8px 12px;
+  font-weight: 800;
+  font-size: 12px;
+  cursor: pointer;
+  user-select: none;
+}
+
+.membership-step-tab:disabled {
+  opacity: 0.55;
+  cursor: not-allowed;
+}
+
+.membership-step-tab--active {
+  background: rgba(255, 255, 255, 0.16);
+  border-color: rgba(255, 255, 255, 0.28);
+}
+
+.membership-step-num {
+  width: 22px;
+  height: 22px;
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.16);
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  color: #fff;
+  font-weight: 900;
+  font-size: 12px;
+}
+
+.membership-step-tab--active .membership-step-num {
+  background: rgba(72, 202, 228, 0.55);
+}
+
+.membership-step-label {
+  letter-spacing: 0.2px;
+}
+
+.membership-plan-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 10px;
+}
+
+@media (max-width: 575.98px) {
+  .membership-plan-grid {
+    grid-template-columns: 1fr;
+  }
+}
+
+.membership-plan-card {
+  width: 100%;
+  text-align: left;
+  border-radius: 12px;
+  border: 1px solid rgba(255, 255, 255, 0.14);
+  background: rgba(0, 0, 0, 0.12);
+  padding: 12px;
+  color: #fff;
+  transition: transform 140ms ease, background 140ms ease, border-color 140ms ease;
+}
+
+.membership-plan-card:hover {
+  transform: translateY(-1px);
+  background: rgba(255, 255, 255, 0.08);
+  border-color: rgba(255, 255, 255, 0.28);
+}
+
+.membership-plan-card--active {
+  border-color: rgba(72, 202, 228, 0.85);
+  background: rgba(72, 202, 228, 0.12);
+}
+
+.membership-plan-card:focus-visible {
+  outline: 2px solid rgba(72, 202, 228, 0.7);
+  outline-offset: 2px;
+}
+
+.membership-plan-top {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.membership-plan-name {
+  font-weight: 900;
+  font-size: 14px;
+  line-height: 1.2;
+}
+
+.membership-plan-sub {
+  color: rgba(255, 255, 255, 0.78);
+  font-size: 12px;
+  margin-top: 2px;
+}
+
+.membership-plan-price {
+  font-weight: 900;
+  font-size: 13px;
+  white-space: nowrap;
+}
+
+/* Payment step — professional surface + CTA */
+.membership-pay-card {
+  border-color: rgba(144, 224, 239, 0.22);
+  background:
+    linear-gradient(135deg, rgba(0, 180, 216, 0.14), rgba(72, 202, 228, 0.06)),
+    rgba(255, 255, 255, 0.08);
+  box-shadow: 0 16px 38px rgba(0, 0, 0, 0.18);
+}
+
+.membership-pay-surface {
+  border-radius: 14px;
+  padding: 12px;
+  border: 1px solid rgba(255, 255, 255, 0.14);
+  background: rgba(0, 0, 0, 0.12);
+}
+
+.membership-pay-actions {
+  display: flex;
+  gap: 10px;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.membership-pay-back {
+  border-radius: 999px !important;
+  padding: 10px 16px !important;
+}
+
+.membership-pay-btn {
+  border-radius: 999px !important;
+  padding: 10px 18px !important;
+  border: 0 !important;
+  background: linear-gradient(135deg, var(--aqua-500), var(--aqua-300)) !important;
+  color: #fff !important;
+  font-weight: 700 !important;
+  box-shadow: 0 10px 22px rgba(0, 180, 216, 0.22);
+  transition: transform 160ms ease, box-shadow 160ms ease, filter 160ms ease;
+}
+
+.membership-pay-btn:hover {
+  transform: translateY(-1px);
+  filter: saturate(1.05);
+  box-shadow: 0 14px 28px rgba(0, 180, 216, 0.3);
+}
+
+.membership-pay-btn:active {
+  transform: translateY(0px);
+  box-shadow: 0 8px 18px rgba(0, 180, 216, 0.22);
+}
+
+.membership-pay-btn:disabled,
+.membership-pay-btn.disabled {
+  opacity: 0.6;
+  transform: none;
+  box-shadow: none;
+  filter: none;
+}
+
+@media (max-width: 575.98px) {
+  .membership-pay-actions {
+    flex-direction: column;
+    align-items: stretch;
+  }
+
+  .membership-pay-actions .btn {
+    width: 100%;
+  }
+}
+
+.membership-plan-tag {
+  margin-top: 8px;
+  display: inline-flex;
+  align-items: center;
+  padding: 4px 8px;
+  border-radius: 999px;
+  font-size: 11px;
+  font-weight: 800;
+  background: rgba(255, 255, 255, 0.14);
+  border: 1px solid rgba(255, 255, 255, 0.18);
+  color: rgba(255, 255, 255, 0.92);
+}
+
+.membership-subcard {
+  background: rgba(0, 0, 0, 0.14);
+  border-radius: 12px;
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  padding: 12px;
+}
+
+.membership-subcard-title {
+  color: rgba(255, 255, 255, 0.92);
+  font-size: 12px;
+  font-weight: 900;
+  letter-spacing: 0.2px;
+}
+
+/* Keep Bootstrap inputs readable on dark background */
+.membership-page .form-control,
+.membership-page .form-select {
+  background-color: rgba(255, 255, 255, 0.94);
+}
+
+/* Mobile: add a consistent page gutter so content doesn't touch edges */
+@media (max-width: 576px) {
+  :root {
+    --page-gutter: 16px;
+  }
+
+  /* React-Bootstrap containers drive most public pages */
+  .container,
+  .container-fluid,
+  .container-sm,
+  .container-md,
+  .container-lg,
+  .container-xl,
+  .container-xxl {
+    padding-left: var(--page-gutter) !important;
+    padding-right: var(--page-gutter) !important;
+  }
+
+  /* Custom wrappers used outside Bootstrap's container system */
+  .admin-page-container,
+  .membership-container {
+    padding-left: var(--page-gutter) !important;
+    padding-right: var(--page-gutter) !important;
+  }
+}
