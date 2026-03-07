@@ -19,7 +19,7 @@ const allowedOrigins = (process.env.CORS_ORIGINS || '')
   .map(s => s.trim())
   .filter(Boolean);
 
-const defaultDevOrigins = ['http://localhost:5173', 'http://localhost:3000'];
+const defaultDevOrigins = ['http://localhost:5173', 'http://localhost:3000','https://loginsportsacademy.netlify.app/'];
 const corsOrigins = allowedOrigins.length ? allowedOrigins : defaultDevOrigins;
 
 app.use(cors({
