@@ -14,13 +14,48 @@ connectDB()
 const app = express()
 
 // Middleware
-const allowedOrigins = (process.env.CORS_ORIGINS || '')
-  .split(',')
-  .map(s => s.trim())
-  .filter(Boolean);
+const normalizeOrigin = value => {
+  const s = String(value || '').trim()
+  // Browsers never include a trailing slash in the Origin header,
+  // but humans often paste one in env vars.
+  return s.endsWith('/') ? s.slice(0, -1) : s
+}
 
-const defaultDevOrigins = ['http://localhost:5173', 'http://localhost:3000','https://loginsportsacademy.netlify.app/'];
-const corsOrigins = allowedOrigins.length ? allowedOrigins : defaultDevOrigins;
+// If you do NOT set CORS_ORIGINS on the host (Render), we fall back to safe defaults here.
+// Update these when you change your frontend domain.
+const DEFAULT_ALLOWED_ORIGINS = [
+  'http://localhost:5173',
+  'http://localhost:3000',
+  // Netlify production domain
+  'https://loginsportsacademy.netlify.app',
+  // Netlify deploy previews
+  'https://*--loginsportsacademy.netlify.app',
+]
+
+const allowedOriginsRaw = (process.env.CORS_ORIGINS || '')
+  .split(',')
+  .map(s => normalizeOrigin(s))
+  .filter(Boolean)
+
+const effectiveOriginsRaw = allowedOriginsRaw.length ? allowedOriginsRaw : DEFAULT_ALLOWED_ORIGINS
+
+// Supports exact origins and simple wildcard patterns using '*'.
+// Examples:
+// - https://loginsportsacademy.netlify.app
+// - https://*--loginsportsacademy.netlify.app (Netlify deploy previews)
+// - http://localhost:5173
+const toOriginMatcher = value => {
+  const v = normalizeOrigin(value)
+  if (!v) return null
+  if (!v.includes('*')) return { type: 'exact', value: v }
+
+  const escaped = v.replace(/[.+?^${}()|[\]\\]/g, '\\$&')
+  const regex = new RegExp(`^${escaped.replace(/\*/g, '.*')}$`)
+  return { type: 'regex', value: v, regex }
+}
+
+const allowedOriginMatchers = effectiveOriginsRaw.map(toOriginMatcher).filter(Boolean)
+const corsOrigins = allowedOriginMatchers
 
 app.use(cors({
   // Checks if the incoming request's origin is in our whitelist (localhost dev + Netlify production)
@@ -28,7 +63,17 @@ app.use(cors({
     // Allow requests with no origin (like mobile apps or curl requests)
     if (!origin) return callback(null, true)
 
-    if (corsOrigins.indexOf(origin) === -1) {
+    const normalized = normalizeOrigin(origin)
+
+    const allowed = corsOrigins.some(m => {
+      if (!m) return false
+      if (typeof m === 'string') return normalizeOrigin(m) === normalized
+      if (m.type === 'exact') return m.value === normalized
+      if (m.type === 'regex') return Boolean(m.regex?.test(normalized))
+      return false
+    })
+
+    if (!allowed) {
       const msg = 'The CORS policy for this site does not allow access from the specified Origin.'
       return callback(new Error(msg), false)
     }
