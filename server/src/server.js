@@ -28,6 +28,8 @@ const DEFAULT_ALLOWED_ORIGINS = [
   'http://localhost:3000',
   // Netlify production domain
   'https://loginsportsacademy.netlify.app',
+  'http://loginsportsacademy.in',
+  'http://www.loginsportsacademy.in',
   // Netlify deploy previews
   'https://*--loginsportsacademy.netlify.app',
 ]
