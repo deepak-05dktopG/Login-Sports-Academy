@@ -119,13 +119,13 @@ export default function Gallery() {
                   <img
                     src={img.imageUrl}
                     alt={img.title || img.description || 'Swimming gallery image'}
-                    style={{ width: '100%', height: 260, objectFit: 'cover' }}
+                    style={{ width: '100%', height: 260, objectFit: 'contain' }}
                     loading="lazy"
                   />
                   <Card.Body>
-                    <Card.Title style={{ fontWeight: 900 }}>{img.title || `Session ${idx + 1}`}</Card.Title>
+                    <Card.Title style={{ fontWeight: 900 }}>{img.title}</Card.Title>
                     <div style={{ color: 'var(--ink-700)', lineHeight: 1.6 }}>
-                      {(img.description || '').slice(0, 120) || 'Focused practice, guided feedback, and steady confidence.'}
+                      {(img.description || '').slice(0, 120)}
                     </div>
                   </Card.Body>
                 </Card>

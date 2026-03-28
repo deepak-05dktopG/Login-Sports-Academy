@@ -28,8 +28,24 @@ api.interceptors.request.use(
     }
     return config
   },
-  // Passes through request errors unchanged
   error => {
+    return Promise.reject(error);
+  }
+)
+
+// Add response interceptor to auto-logout on unauthorized
+api.interceptors.response.use(
+  response => response,
+  error => {
+    if (error.response && (error.response.status === 401 || error.response.status === 403)) {
+      try {
+        localStorage.removeItem('adminToken');
+        localStorage.removeItem('isAdmin');
+      } catch (e) {}
+      if (window.location.pathname !== '/admin') {
+         window.location.href = '/admin'
+      }
+    }
     return Promise.reject(error);
   }
 )

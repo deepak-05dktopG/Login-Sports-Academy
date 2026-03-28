@@ -93,7 +93,13 @@ const Navbar = () => {
     >
       <Container>
         <BsNavbar.Brand as={Link} to="/" className="d-inline-flex align-items-center gap-2">
-          <img src="/assets/brand/logo.svg" width="50" height="50" alt={`${BRAND.name} logo`} />
+          <img
+            src="/assets/Logo.png"
+            width="50"
+            height="50"
+            alt={`${BRAND.name} logo`}
+            style={{ objectFit: 'contain' }}
+          />
           <span className="d-inline d-sm-none" style={brandTextMobileStyle}>
             { BRAND.name}
           </span>

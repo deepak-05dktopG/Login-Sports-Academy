@@ -29,7 +29,11 @@ const Footer = () => {
           <Row className="gy-4">
             <Col lg={5}>
               <div className="d-flex align-items-center gap-3 mb-3">
-                <img src="/assets/brand/logo.svg" alt={`${BRAND.name} logo`} style={{ width: 54, height: 54 }} />
+                <img
+                  src="/assets/Logo.png"
+                  alt={`${BRAND.name} logo`}
+                  style={{ width: 54, height: 54, objectFit: 'contain' }}
+                />
                 <div>
                   <div style={{ fontWeight: 900, fontSize: '1.25rem' }}>{BRAND.name}</div>
                   <div style={{ opacity: 0.8 }}>{BRAND.tagline}</div>
@@ -66,14 +70,14 @@ const Footer = () => {
                   </a>
                 </div>
 
-                {BRAND.phonePrimary ? (
-                  <div className="d-flex gap-3 align-items-start">
+                {[BRAND.phonePrimary, BRAND.phoneSecondary, BRAND.phoneTertiary].filter(Boolean).map((phone, idx) => (
+                  <div key={idx} className="d-flex gap-3 align-items-start">
                     <FaPhone style={{ marginTop: 3, color: 'var(--aqua-300)' }} />
-                    <a href={`tel:${BRAND.phonePrimary}`} style={{ color: '#fff', textDecoration: 'none' }}>
-                      {BRAND.phonePrimary}
+                    <a href={`tel:${phone.replace(/\s+/g, '')}`} style={{ color: '#fff', textDecoration: 'none' }}>
+                      {phone}
                     </a>
                   </div>
-                ) : null}
+                ))}
 
                 {BRAND.address ? (
                   <div className="d-flex gap-3 align-items-start">

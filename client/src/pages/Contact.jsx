@@ -1,8 +1,10 @@
-﻿import { useState } from 'react'
+import { useState } from 'react'
 import { Container, Row, Col, Form, Alert } from 'react-bootstrap'
 import { Link } from 'react-router-dom'
-import { FaEnvelope, FaRegClock } from 'react-icons/fa'
-
+import { FaEnvelope, FaRegClock, FaPhone } from 'react-icons/fa'
+import emailjs from "@emailjs/browser";
+import Swal from 'sweetalert2';
+import { formatDateTime } from "../utils/dateTime";
 import Navbar from '../components/Navbar'
 import WaveSeparator from '../components/WaveSeparator'
 import { BRAND } from '../content/brand'
@@ -18,32 +20,97 @@ const Contact = () => {
     setFormData(prev => ({ ...prev, [e.target.name]: e.target.value }))
   }
 
+  // Submit feedback: save to database then send email + auto-reply via EmailJS
   const handleSubmit = async e => {
-    e.preventDefault()
-    setLoading(true)
-    setStatus(null)
+    e.preventDefault();
+    setLoading(true);
 
     try {
+      // Save to database first
       const response = await fetch(`${apiBase}/feedback`, {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers: {
+          'Content-Type': 'application/json',
+        },
         body: JSON.stringify(formData),
-      })
+      });
+      const data = await response.json();
+      if (!response.ok) {
+        throw new Error(data.message || 'Failed to save feedback');
+      }
+      
+      // Then send email via EmailJS
+      try {
+        await emailjs.send(
+          "service_hvi4aa5",
+          "template_e19fi3a",
+          {
+            from_name: formData.name,
+            from_email: formData.email,
+            phone: formData.phone,
+            message: formData.message,
+				time: formatDateTime(new Date()),
+          },
+          "mbQp-0kZOmadPSjVn"
+        );
+        
+        // Send auto-reply
+        await emailjs.send("service_hvi4aa5", "template_e19fi3a", {
+          from_name: formData.name,
+          phone: formData.phone,
+        }, "mbQp-0kZOmadPSjVn");
+        // Both database and email successful
+        Swal.fire({
+          toast: true,
+          position: 'top-end',
+          icon: 'success',
+          title: 'Message Sent Successfully!',
+          text: "We received your message. We'll get back to you within 24 hours!",
+          showConfirmButton: false,
+          timer: 5000,
+          timerProgressBar: true,
+          background: 'linear-gradient(135deg, #4ECDC4, #54A0FF)',
+          color: '#fff',
+          iconColor: '#fff'
+        });
+      } catch (emailError) {
+        console.error('EmailJS error:', emailError);
+        // Database saved but email failed
+        Swal.fire({
+          toast: true,
+          position: 'top-end',
+          icon: 'success',
+          title: 'Message Saved!',
+          text: "We'll get back to you soon. (Email notification pending)",
+          showConfirmButton: false,
+          timer: 5000,
+          timerProgressBar: true,
+          background: 'linear-gradient(135deg, #FFD93D, #FF9FF3)',
+          color: '#fff',
+          iconColor: '#fff'
+        });
+      }
 
-      const data = await response.json().catch(() => ({}))
-      if (!response.ok) throw new Error(data.message || 'Failed to send message')
-
-      setFormData({ name: '', email: '', phone: '', message: '' })
-      setStatus({ type: 'success', message: "Thanks — we’ve received your message and will reply as soon as possible." })
+      setFormData({ name: "", email: "", phone: "", message: "" });
     } catch (error) {
-      setStatus({
-        type: 'danger',
-        message: error?.message || 'Something went wrong. Please try again in a moment.',
-      })
+      console.error('Error submitting feedback:', error);
+      Swal.fire({
+        toast: true,
+        position: 'top-end',
+        icon: 'error',
+        title: 'Failed to Send Message',
+        text: 'Try again later or contact via Phone/Email/WhatsApp.',
+        showConfirmButton: false,
+        timer: 5000,
+        timerProgressBar: true,
+        background: 'linear-gradient(135deg, #FF6B6B, #FF9FF3)',
+        color: '#fff',
+        iconColor: '#fff'
+      });
     } finally {
-      setLoading(false)
+      setLoading(false);
     }
-  }
+  };
 
   return (
     <div>
@@ -89,6 +156,28 @@ const Contact = () => {
                     <div>
                       <div style={{ fontWeight: 900 }}>Email</div>
                       <div style={{ opacity: 0.9 }}>{BRAND.email}</div>
+                    </div>
+                  </div>
+                  <div className="d-flex align-items-start gap-3 mt-3">
+                    <div
+                      className="bg-white bg-opacity-10"
+                      style={{
+                        width: 42,
+                        height: 42,
+                        borderRadius: 14,
+                        display: 'grid',
+                        placeItems: 'center',
+                      }}
+                    >
+                      <FaPhone />
+                    </div>
+                    <div>
+                      <div style={{ fontWeight: 900 }}>Phone</div>
+                      <div style={{ opacity: 0.9 }}>
+                        {[BRAND.phonePrimary, BRAND.phoneSecondary, BRAND.phoneTertiary].filter(Boolean).map((phone, i) => (
+                          <div key={i}><a href={`tel:${phone.replace(/\s+/g, '')}`} style={{ color: 'inherit', textDecoration: 'none' }}>{phone}</a></div>
+                        ))}
+                      </div>
                     </div>
                   </div>
                   <div className="d-flex align-items-start gap-3 mt-3">

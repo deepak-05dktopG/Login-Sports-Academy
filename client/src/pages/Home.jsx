@@ -2,8 +2,8 @@
  * Home page (Login Swim Academy redesign)
  */
 
-import { useEffect, useMemo, useState } from 'react'
-import { Container, Row, Col, Card, Badge } from 'react-bootstrap'
+import { useEffect, useMemo, useState, useRef } from 'react'
+import { Container, Row, Col, Card, Badge, Modal } from 'react-bootstrap'
 import { Link } from 'react-router-dom'
 import { FaChalkboardTeacher, FaChild, FaMedal, FaWater } from 'react-icons/fa'
 
@@ -17,6 +17,19 @@ const Home = () => {
   const [posts, setPosts] = useState([])
   const [galleryImages, setGalleryImages] = useState([])
   const [loading, setLoading] = useState(true)
+  const [showPopup, setShowPopup] = useState(true)
+  const [isVideoMuted, setIsVideoMuted] = useState(true)
+  const videoRef = useRef(null)
+
+  const handleClosePopup = () => {
+    setShowPopup(false)
+    // Attempt to unmute and play the video upon the user's first click interaction
+    if (videoRef.current) {
+      videoRef.current.muted = false
+      setIsVideoMuted(false)
+      videoRef.current.play().catch(err => console.log('Autoplay still blocked', err))
+    }
+  }
 
   useEffect(() => {
     const run = async () => {
@@ -103,6 +116,43 @@ const Home = () => {
     <div>
       <Navbar />
 
+      {/* PROMO POPUP */}
+      <Modal show={showPopup} onHide={handleClosePopup} centered size="lg" contentClassName="bg-transparent border-0">
+        <div style={{ position: 'relative', background: 'transparent' }}>
+          <button 
+            onClick={handleClosePopup}
+            aria-label="Close"
+            style={{ 
+              position: 'absolute', 
+              top: '12px', 
+              right: '12px', 
+              zIndex: 10, 
+              background: 'rgba(255, 255, 255, 0.9)', 
+              color: '#333', 
+              border: 'none', 
+              borderRadius: '50%', 
+              width: '32px', 
+              height: '32px', 
+              display: 'flex', 
+              alignItems: 'center', 
+              justifyContent: 'center',
+              cursor: 'pointer',
+              fontWeight: 'bold',
+              fontSize: '24px',
+              paddingBottom: '2px', // Centers the times character visually
+              boxShadow: '0 2px 10px rgba(0,0,0,0.2)'
+            }}
+          >
+            &times;
+          </button>
+          <img 
+            src="/assets/popupaddimage.jpeg" 
+            alt="Academy Promo" 
+            style={{ width: '100%', height: 'auto', display: 'block', borderRadius: '12px', boxShadow: '0 10px 40px rgba(0,0,0,0.5)' }} 
+          />
+        </div>
+      </Modal>
+
       {/* HERO */}
       <section className="hero-pool" style={{ paddingTop: 92 }}>
         <Container className="section-pad">
@@ -141,11 +191,62 @@ const Home = () => {
                 </div>
               </div>
             </Col>
+            <Col lg={4}>
+              <div data-reveal className="reveal" style={{ display: 'flex', justifyContent: 'center', marginTop: '20px', position: 'relative' }}>
+                <video 
+                  ref={videoRef}
+                  src="/assets/addvideo.mp4" 
+                  autoPlay 
+                  controls
+                  loop 
+                  muted={isVideoMuted}
+                  playsInline 
+                  style={{ 
+                    width: '100%', 
+                    maxWidth: '380px', 
+                    borderRadius: '16px', 
+                    boxShadow: '0 15px 40px rgba(0,0,0,0.4)', 
+                    border: '4px solid rgba(255,255,255,0.15)' 
+                  }}
+                />
+                {isVideoMuted && (
+                  <button
+                    onClick={() => {
+                      if (videoRef.current) {
+                        videoRef.current.muted = false;
+                        setIsVideoMuted(false);
+                      }
+                    }}
+                    style={{
+                      position: 'absolute',
+                      top: '15px',
+                      right: '15px',
+                      background: 'rgba(0,0,0,0.6)',
+                      color: '#fff',
+                      border: 'none',
+                      padding: '6px 14px',
+                      borderRadius: '20px',
+                      fontSize: '0.85rem',
+                      fontWeight: 700,
+                      cursor: 'pointer',
+                      backdropFilter: 'blur(4px)',
+                      display: 'flex',
+                      alignItems: 'center',
+                      gap: '6px',
+                      zIndex: 5
+                    }}
+                  >
+                    🔊 Tap to Unmute
+                  </button>
+                )}
+              </div>
+            </Col>
           </Row>
         </Container>
 
         <WaveSeparator fill="var(--foam-50)" />
       </section>
+
 
       {/* PROGRAMS */}
       <section style={{ background: 'var(--tint-aqua-1)' }}>
@@ -213,7 +314,6 @@ const Home = () => {
                   Every swimmer starts with a simple baseline check. From there, sessions use clear drills, progressive
                   sets, and feedback you can apply immediately.
                 </p>
-
                 <div className="surface" style={{ padding: 18 }}>
                   {[
                     { k: '1', t: 'Skill baseline', d: 'We assess comfort, breathing, and current stroke patterns.' },
@@ -254,9 +354,12 @@ const Home = () => {
 
             <Col lg={6}>
               <div data-reveal className="reveal surface surface--glass ripple-hover" style={{ padding: 12 }}>
-                <img
-                  alt="Swimming instructor guiding a learner"
-                  src="https://images.pexels.com/photos/863988/pexels-photo-863988.jpeg?auto=compress&cs=tinysrgb&w=1400"
+                <video
+                  src="/assets/trainingvideo.mp4"
+                  autoPlay
+                  loop
+                  muted
+                  playsInline
                   style={{ width: '100%', height: 'clamp(280px, 70vw, 470px)', objectFit: 'cover', borderRadius: 18 }}
                 />
               </div>

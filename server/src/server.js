@@ -13,7 +13,7 @@ import apiRoutes from './routes/api.js'
 connectDB()
 const app = express()
 
-// Middleware
+// Middleware  
 const normalizeOrigin = value => {
   const s = String(value || '').trim()
   // Browsers never include a trailing slash in the Origin header,
@@ -32,6 +32,7 @@ const DEFAULT_ALLOWED_ORIGINS = [
   'https://www.loginsportsacademy.in',
   // Netlify deploy previews
   'https://*--loginsportsacademy.netlify.app',
+  'https://login-sports-academy.onrender.com/api/admin/login'
 ]
 
 const allowedOriginsRaw = (process.env.CORS_ORIGINS || '')
