@@ -12,7 +12,7 @@ import Admin from '../models/Admin.js'
 // Developer-only seed.
 // Edit these values in code, then run: `npm run seed-admin`
 const ADMIN = {
-	email: 'loginsportsacadamy@gmail.com',
+	email: 'loginsportsacademy6@gmail.com',
 	password: 'login@123',
 	role: 'admin', // 'admin' | 'superadmin'
 }

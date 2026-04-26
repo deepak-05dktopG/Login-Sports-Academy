@@ -140,7 +140,7 @@ const Contact = () => {
 
   const contactMethods = [
     { icon: <FaPhone size={28} />, link: 'tel:+919952139201', title: "Phone", value: "+91 99521-39201", color: "#00D4FF" },
-    { icon: <FaEnvelope size={28} />, link: 'mailto:loginsportsacademy@gmail.com', title: "Email", value: "loginsportsacademy@gmail.com", color: "#FFB800" },
+    { icon: <FaEnvelope size={28} />, link: 'mailto:loginsportsacademy6@gmail.com', title: "Email", value: "loginsportsacademy6@gmail.com", color: "#FFB800" },
     { icon: <FaMapMarkerAlt size={28} />, link: 'https://maps.google.com/?q=Login+Sports+Academy+Salem', title: "Location", value: "Nethimedu, Salem - 636002", color: "#00D4FF" },
     { icon: <FaWhatsapp size={28} />, link: 'https://wa.me/919952139201', title: "WhatsApp", value: "+91 99521-39201", color: "#25D366" }
   ];

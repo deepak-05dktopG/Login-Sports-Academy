@@ -235,8 +235,8 @@ const Footer = () => {
                 },
                 {
                   icon: <FaEnvelope />,
-                  text: "loginsportsacademy@gmail.com",
-                  link: "mailto:loginsportsacademy@gmail.com",
+                  text: "loginsportsacademy6@gmail.com",
+                  link: "mailto:loginsportsacademy6@gmail.com",
                 },
               ].map(
               // Renders each contact detail with icons

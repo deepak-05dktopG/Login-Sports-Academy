@@ -24,7 +24,7 @@ app.use(cors({
       'https://loginsportsacademy.netlify.app',
       'https://login-sports-academy.netlify.app',
       /^https:\/\/(.*\.)?loginsportsacademy\.in$/
-    ]; 
+    ];  
     if (!origin || allowed.some(o => typeof o === 'string' ? o === origin : o.test(origin))) {
       callback(null, true);
     } else {

@@ -13,8 +13,8 @@ const Team = () => {
 
   const swimmingTeam = {
     leadership: [
-      { name: "Mr. V. Vijeesh", position: "CEO & Head Coach", image: "/assets/vijeesh.jpg", eligibilities: ["Represented India - FINA", "NIS, ASCA Level 3 Certified"] },
-      { name: "Mr. Manikandan", position: "Director", image: "/assets/manikandan.jpg", eligibilities: ["National Swimmer", "NIS, ASCA Level 3"] },
+      { name: "Mr. M. Dinesh", position: "_________", image: "/assets/Team/dinesh.png", eligibilities: [] },
+      { name: "Mr._________", position: "_______", image: "/assets/Team/leader2.jpeg", eligibilities: [] },
     ],
     coaches: [
       { name: "Mr. V. Vijeesh", position: "Coach", image: "/assets/Team/vijeesh.jpg", eligibilities: ["International Swimmer", "ASCA Level 3"] },
@@ -277,7 +277,8 @@ const Team = () => {
         .elite-image {
           width: 100%;
           height: 100%;
-          object-fit: cover;
+          object-fit: contain;
+          object-position: center top;
           transition: transform 0.6s ease;
         }
 
