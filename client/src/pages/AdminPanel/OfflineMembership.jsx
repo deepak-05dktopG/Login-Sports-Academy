@@ -1174,7 +1174,7 @@ const OfflineMembership = () => {
                                                                 <button
                                                                     className="btn btn-outline-success btn-sm"
                                                                     onClick={() => {
-                                                                        const url = `https://loginsportsacademy.com/member/id/${m._id}`;
+                                                                        const url = `https://loginsportsacademy.in/member/id/${m._id}`;
                                                                         const message = `Hello *${m.name.toUpperCase()}* \n\nWelcome to *Login Sports Academy*!  Thank you for registering with us.\n\nYour Official Digital Member ID Card is ready. \nPlease use the secure link below to view and download your ID card for attendance and entry:\n\n ${url}\n\nWe look forward to seeing you at the academy! \n\nRegards,\n*Team Login Sports Academy* `;
                                                                         const whatsappUrl = `https://wa.me/91${m.phone}?text=${encodeURIComponent(message)}`;
                                                                         window.open(whatsappUrl, '_blank');

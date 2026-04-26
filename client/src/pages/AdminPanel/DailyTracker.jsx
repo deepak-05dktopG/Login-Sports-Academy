@@ -952,7 +952,7 @@ const DailyTracker = () => {
         {printData && (
           <div style={{ width: '100%', padding: '0 4px', boxSizing: 'border-box' }}>
             <h3 style={{ margin: '0 0 2px 0', fontSize: '15px', textAlign: 'center', fontWeight: '900' }}>LOGIN SPORTS ACADEMY</h3>
-            <p style={{ margin: '0 0 4px 0', textAlign: 'center', fontSize: '11px' }}>loginsportsacademy.com</p>
+            <p style={{ margin: '0 0 4px 0', textAlign: 'center', fontSize: '11px' }}>loginsportsacademy.in</p>
 
             <p style={{ margin: '2px 0', textAlign: 'center', fontSize: '12px' }}>----------------------------</p>
 
