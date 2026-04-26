@@ -13,11 +13,11 @@ import Admin from '../models/Admin.js'
 // Edit these values in code, then run: `npm run seed-admin`
 const ADMIN = {
 	email: 'loginsportsacadamy@gmail.com',
-	password: 'login.admin',
+	password: 'login@123',
 	role: 'admin', // 'admin' | 'superadmin'
 }
 
-// Connects to MongoDB and upserts the default Bluefins admin account
+// Connects to MongoDB and upserts the default Login Sports Academy admin account
 const main = async () => {
     if (!ADMIN.email || !ADMIN.password) {
 		throw new Error('Seed admin requires ADMIN.email and ADMIN.password')

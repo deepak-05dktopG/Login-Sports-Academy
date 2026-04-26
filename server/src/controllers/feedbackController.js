@@ -4,9 +4,6 @@
  */
 
 import Feedback from '../models/Feedback.js';
-import { sendEmail } from '../utils/emailService.js';
-
-const DEFAULT_CONTACT_TO_EMAIL = 'loginsportsacadamy@gmail.com';
 
 // @desc    Submit new feedback
 // @route   POST /api/feedback
@@ -39,50 +36,6 @@ const createFeedback = async (req, res) => {
       source: 'contact-form'
     });
 
-    // Best-effort email notification (don’t fail the request if SMTP isn’t configured)
-    const contactTo = process.env.CONTACT_TO_EMAIL || DEFAULT_CONTACT_TO_EMAIL;
-    const emailConfigured = Boolean(process.env.EMAIL_SERVICE && process.env.EMAIL_USER && process.env.EMAIL_PASS);
-    let emailNotification = { attempted: false, sent: false };
-
-    if (emailConfigured) {
-      emailNotification.attempted = true;
-      try {
-        await sendEmail({
-          to: contactTo,
-          subject: `New website enquiry — ${name}`,
-          text: [
-            'New contact message received:',
-            `Name: ${name}`,
-            `Email: ${email}`,
-            `Phone: ${phone}`,
-            '',
-            message,
-            '',
-            `Feedback ID: ${feedback._id}`,
-          ].join('\n'),
-          html: `
-            <div style="font-family: Arial, sans-serif; line-height: 1.5;">
-              <h2 style="margin: 0 0 12px;">New website enquiry</h2>
-              <p style="margin: 0 0 12px; color: #1c2a36;">A new message was submitted from the Contact page.</p>
-              <table cellpadding="6" cellspacing="0" style="border-collapse: collapse;">
-                <tr><td><strong>Name</strong></td><td>${name}</td></tr>
-                <tr><td><strong>Email</strong></td><td>${email}</td></tr>
-                <tr><td><strong>Phone</strong></td><td>${phone}</td></tr>
-                <tr><td><strong>Feedback ID</strong></td><td>${feedback._id}</td></tr>
-              </table>
-              <div style="margin-top: 12px; padding: 12px; background: #f5fbff; border: 1px solid rgba(6,24,38,0.12); border-radius: 10px;">
-                <div style="font-weight: 700; margin-bottom: 6px;">Message</div>
-                <div style="white-space: pre-wrap;">${message}</div>
-              </div>
-            </div>
-          `,
-        })
-        emailNotification.sent = true;
-      } catch (emailError) {
-        console.error('Feedback email notification failed:', emailError);
-      }
-    }
-
     res.status(201).json({
       success: true,
       message: 'Thank you for your feedback! We will get back to you soon.',
@@ -90,8 +43,7 @@ const createFeedback = async (req, res) => {
         id: feedback._id,
         name: feedback.name,
         email: feedback.email,
-        createdAt: feedback.createdAt,
-        emailNotification,
+        createdAt: feedback.createdAt
       }
     });
   } catch (error) {

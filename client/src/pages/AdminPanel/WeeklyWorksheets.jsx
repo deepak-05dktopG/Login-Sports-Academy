@@ -8,12 +8,12 @@ import { useNavigate } from "react-router-dom";
 import Swal from 'sweetalert2';
 import { adminFetch, isAdminAuthenticated } from "../../utils/adminAuth";
 import { FaPlusCircle, FaLink, FaGoogle, FaGoogleDrive, FaEye, FaTrash, FaExternalLinkAlt } from "react-icons/fa";
-import AdminNavbar from "../../components/adminPanel/AdminNavbar";
+import AdminLayout from "../../components/adminPanel/AdminLayout";
 
 const apiBase = import.meta.env.VITE_API_BASE_URL || "/api";
 
 /**
- * Bluefins admin tool: share weekly worksheets and team resources (Google Forms,
+ * Login Sports Academy admin tool: share weekly worksheets and team resources (Google Forms,
  * Drive folders, or any other link) with coaches/staff.
  * Admins can add new links, track views, filter by link type, and delete outdated items.
  */
@@ -21,7 +21,7 @@ const WeeklyWorksheets = () => {
   const navigate = useNavigate();
 
   useEffect(/**
-   * Bluefins guard: only authenticated admins should access internal staff resources.
+   * Login Sports Academy guard: only authenticated admins should access internal staff resources.
    * Redirect to the admin login page if the session/token is missing.
    */
   () => {
@@ -300,19 +300,12 @@ const WeeklyWorksheets = () => {
   }).length;
 
   return (
-    <div
-      style={{
-        minHeight: "100vh",
-        background: "linear-gradient(135deg, #0a0e27 0%, #1a1f3a 50%, #0f1629 100%)",
-        fontFamily: "Poppins, system-ui",
-      }}
-    >
-      <AdminNavbar />
-      <div style={{ padding: "clamp(22px, 6vw, 50px) clamp(14px, 4vw, 20px) clamp(18px, 6vw, 40px)", maxWidth: "1400px", margin: "0 auto" }}>
+    <AdminLayout>
+      <div style={{ padding: "0 40px 60px 40px", maxWidth: "1400px", margin: "0 auto" }}>
         {/* Header */}
         <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "30px", flexWrap: "wrap", gap: "15px" }}>
           <div>
-            <h1 style={{ color: "#fff", fontSize: "clamp(1.7rem, 5vw, 2.5rem)", fontWeight: "700", marginBottom: "10px" }}>
+            <h1 style={{ color: "#fff", fontSize: "2.5rem", fontWeight: "700", marginBottom: "10px" }}>
              🔗 Team Resources & Links
             </h1>
             <p style={{ color: "#b0b0b0", fontSize: "1rem" }}>
@@ -743,7 +736,7 @@ const WeeklyWorksheets = () => {
           })}
         </div>
       </div>
-    </div>
+    </AdminLayout>
   );
 };
 

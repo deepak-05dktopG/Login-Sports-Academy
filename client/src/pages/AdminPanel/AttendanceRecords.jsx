@@ -8,9 +8,8 @@ import { Link, useNavigate } from 'react-router-dom'
 import Swal from 'sweetalert2'
 import { adminFetch, isAdminAuthenticated } from '../../utils/adminAuth'
 import { formatDateTime } from '../../utils/dateTime'
-import { FaCamera, FaSyncAlt, FaDownload, FaTrash } from 'react-icons/fa'
-import AdminNavbar from '../../components/adminPanel/AdminNavbar'
-import { BRAND } from '../../content/brand'
+import { FaCamera, FaSyncAlt, FaDownload, FaTrash, FaSwimmingPool, FaTableTennis } from 'react-icons/fa'
+import AdminLayout from '../../components/adminPanel/AdminLayout'
 
 /**
  * Utility: parse API responses that might return JSON or plain text.
@@ -31,7 +30,11 @@ const safeReadJson = async res => {
  * Default date filter value (YYYY-MM-DD) for the attendance records screen.
  */
 const todayISO = () => {
-    return new Date().toISOString().slice(0, 10);
+    const d = new Date()
+    const year = d.getFullYear()
+    const month = String(d.getMonth() + 1).padStart(2, '0')
+    const day = String(d.getDate()).padStart(2, '0')
+    return `${year}-${month}-${day}`
 };
 
 /**
@@ -60,7 +63,7 @@ const toQueryString = params => {
 };
 
 export default /**
- * Bluefins admin screen: Attendance Records.
+ * Login Sports Academy admin screen: Attendance Records.
  * Lets staff review past scans/check-ins, filter by date/plan/method/result,
  * export a CSV for reporting, and remove incorrect/old records.
  */
@@ -72,6 +75,7 @@ function AttendanceRecords() {
     const [result, setResult] = React.useState('')
     const [method, setMethod] = React.useState('')
     const [planId, setPlanId] = React.useState('')
+    const [serviceType, setServiceType] = React.useState('swimming')
     const [dateFrom, setDateFrom] = React.useState(todayISO())
     const [dateTo, setDateTo] = React.useState(todayISO())
     const [page, setPage] = React.useState(1)
@@ -133,7 +137,7 @@ function AttendanceRecords() {
     async () => {
         setLoading(true)
         try {
-			const qs = toQueryString({ q, result, method, planId, dateFrom, dateTo, page, limit })
+			const qs = toQueryString({ q, result, method, planId, serviceType, dateFrom, dateTo, page, limit })
 			const res = await adminFetch(`${apiBase}/attendance?${qs}`)
 			const parsed = await safeReadJson(res)
 			if (!res.ok || parsed?.success === false) throw new Error(parsed?.message || `Failed (${res.status})`)
@@ -147,7 +151,7 @@ function AttendanceRecords() {
 		} finally {
 			setLoading(false)
 		}
-    }, [apiBase, dateFrom, dateTo, limit, method, page, planId, q, result])
+    }, [apiBase, dateFrom, dateTo, limit, method, page, planId, serviceType, q, result])
 
     React.useEffect(/**
 	 * Load the list on mount and whenever filters/pagination change.
@@ -214,11 +218,6 @@ function AttendanceRecords() {
      */
     const downloadCsv = async () => {
         try {
-			const brandPrefix = (BRAND.shortName || BRAND.name)
-				.toLowerCase()
-				.replace(/[^a-z0-9]+/g, '-')
-				.replace(/(^-|-$)/g, '')
-
 			const qs = toQueryString({ q, result, method, planId, dateFrom, dateTo, max: 50000 })
 			const res = await adminFetch(`${apiBase}/attendance/export?${qs}`)
 			if (!res.ok) {
@@ -229,7 +228,8 @@ function AttendanceRecords() {
 			const url = window.URL.createObjectURL(blob)
 			const a = document.createElement('a')
 			a.href = url
-			a.download = `${brandPrefix}-attendance-${dateFrom || 'all'}-to-${dateTo || 'all'}.csv`
+			const dt = new Date().toISOString().split('T')[0];
+			a.download = `lsa-attendance-${dateFrom || 'all'}-to-${dateTo || 'all'}_generated-${dt}.csv`
 			document.body.appendChild(a)
 			a.click()
 			a.remove()
@@ -344,14 +344,7 @@ function AttendanceRecords() {
 	}
 
     return (
-        <div
-			style={{
-				minHeight: '100vh',
-				background: 'linear-gradient(135deg, #0a0e27 0%, #1a1f3a 50%, #0f1629 100%)',
-				fontFamily: 'Poppins, system-ui',
-			}}
-		>
-            <AdminNavbar />
+        <AdminLayout>
             <div className="admin-page-container" style={{ padding: '32px', maxWidth: '1400px', margin: '0 auto' }}>
 				<div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', gap: '20px', marginBottom: '20px' }}>
 					<div>
@@ -378,6 +371,23 @@ function AttendanceRecords() {
 				</div>
 
 				<div style={cardStyle}>
+                    <div style={{ marginBottom: "20px" }}>
+						<div className="sport-tabs">
+							<button
+								className={`sport-tab sport-tab--swimming ${serviceType === 'swimming' ? 'sport-tab--active' : ''}`}
+								onClick={() => { setServiceType('swimming'); setPlanId(''); setPage(1); }}
+							>
+								<FaSwimmingPool /> Swimming
+							</button>
+							<button
+								className={`sport-tab sport-tab--badminton ${serviceType === 'badminton' ? 'sport-tab--active' : ''}`}
+								onClick={() => { setServiceType('badminton'); setPlanId(''); setPage(1); }}
+							>
+								<FaTableTennis /> Badminton
+							</button>
+						</div>
+					</div>
+
 					<div className="admin-filter-grid" style={{ gap: '10px' }}>
 						<div className="admin-filter-span-2">
 							<div style={labelStyle}>Search</div>
@@ -408,14 +418,14 @@ function AttendanceRecords() {
                                 }}
 								style={{ width: '100%', padding: '12px 14px', borderRadius: '12px', border: '1px solid rgba(255,255,255,0.14)', background: 'rgba(10, 14, 39, 0.65)', color: 'rgba(255,255,255,0.92)' }}
 							>
-								<option value="">All Plans</option>
-								{plans.map(/**
+								<option value="">All {serviceType} Plans</option>
+								{plans.filter(p => (p.serviceType || 'swimming') === serviceType).map(/**
 								 * Render each plan option.
 								 */
                                 p => {
                                     return (
                                         <option key={p._id} value={p._id}>
-                                            {p.planName}
+                                            {(p.serviceType === 'badminton' ? '🏸 ' : '🏊 ')}{p.planName}
                                         </option>
                                     );
                                 })}
@@ -712,6 +722,6 @@ function AttendanceRecords() {
 					</div>
 				</div>
 			</div>
-        </div>
+        </AdminLayout>
     );
 }

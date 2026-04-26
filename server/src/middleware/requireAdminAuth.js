@@ -34,10 +34,7 @@ const requireAdminAuth = async (req, res, next) => {
 		}
 
 		const admin = await Admin.findById(adminDbId).lean()
-		if (!admin) {
-			return res.status(401).json({ success: false, message: 'Unauthorized (admin not found)' })
-		}
-		if (admin.isActive === false) {
+		if (!admin || admin.isActive === false) {
 			return res.status(401).json({ success: false, message: 'Unauthorized (admin disabled)' })
 		}
 

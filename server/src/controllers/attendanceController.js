@@ -8,11 +8,11 @@ import mongoose from 'mongoose'
 import Attendance from '../models/Attendance.js'
 import Member from '../models/Member.js'
 
-const QR_PREFIX = 'bluefins:member:'
+const QR_PREFIX = 'lsa:member:'
 
 const BUSINESS_TZ_OFFSET_MINUTES = Number.parseInt(process.env.BUSINESS_TZ_OFFSET_MINUTES || '330', 10)
 
-// Converts a Date to a YYYY-MM-DD string in the pool's local timezone (IST +5:30)
+// Converts a Date to a YYYY-MM-DD string in the facility's local timezone (IST +5:30)
 const toDateKey = date => {
     const d = date instanceof Date ? date : new Date(date)
     if (Number.isNaN(d.getTime())) return null
@@ -196,6 +196,7 @@ const normalizeQueryForAttendance = async reqQuery => {
 		result,
 		method,
 		planId,
+		serviceType,
 		memberId,
 		q,
 	} = reqQuery || {}
@@ -231,13 +232,22 @@ const normalizeQueryForAttendance = async reqQuery => {
 	}
 
     const rawPlanId = planId == null ? '' : String(planId).trim()
-    if (rawPlanId) {
-		if (!mongoose.isValidObjectId(rawPlanId)) {
-			return { ok: false, message: 'Invalid planId' }
+    const rawServiceType = serviceType == null ? '' : String(serviceType).trim()
+    if (rawPlanId || rawServiceType) {
+		const memberQuery = {}
+		if (rawPlanId) {
+			if (!mongoose.isValidObjectId(rawPlanId)) {
+				return { ok: false, message: 'Invalid planId' }
+			}
+			memberQuery.planId = rawPlanId
 		}
-		// Resolve members by planId and constrain attendance by those memberIds.
+		if (rawServiceType) {
+			memberQuery.serviceType = rawServiceType
+		}
+		
+		// Resolve members by planId/serviceType and constrain attendance by those memberIds.
 		// Capped to protect DB; if membership size is extremely large, add more specific filters.
-		const planMembers = await Member.find({ planId: rawPlanId })
+		const planMembers = await Member.find(memberQuery)
 			.select({ _id: 1 })
 			.limit(50000)
 		const planMemberIds = planMembers.map(
@@ -462,7 +472,7 @@ export const exportAttendanceCsv = asyncHandler(async (req, res) => {
 		.populate({ path: 'memberId', populate: { path: 'planId' } })
 		.lean()
 
-    const filename = `bluefins-attendance-${new Date().toISOString().slice(0, 10)}.csv`
+    const filename = `lsa-attendance-${new Date().toISOString().slice(0, 10)}.csv`
     res.setHeader('Content-Type', 'text/csv; charset=utf-8')
     res.setHeader('Content-Disposition', `attachment; filename="${filename}"`)
 

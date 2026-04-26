@@ -1,24 +1,50 @@
-import { useState } from 'react'
-import { Container, Row, Col, Form, Alert } from 'react-bootstrap'
-import { Link } from 'react-router-dom'
-import { FaEnvelope, FaRegClock, FaPhone } from 'react-icons/fa'
+/**
+ * What it is: Website page (Contact screen).
+ * Non-tech note: This is the contact form + contact details users can send.
+ */
+
+import { useState, useEffect } from "react";
+import { Link } from "react-router-dom";
+import Navbar from "../components/Navbar";
+import AOS from "aos";
+import "aos/dist/aos.css";
 import emailjs from "@emailjs/browser";
 import Swal from 'sweetalert2';
 import { formatDateTime } from "../utils/dateTime";
-import Navbar from '../components/Navbar'
-import WaveSeparator from '../components/WaveSeparator'
-import { BRAND } from '../content/brand'
+import { FaPhone, FaEnvelope, FaMapMarkerAlt, FaWhatsapp, FaInstagram, FaClock, FaHeadset, FaUsers } from "react-icons/fa";
 
-const apiBase = import.meta.env.VITE_API_BASE_URL || '/api'
 
+const apiBase = import.meta.env.VITE_API_BASE_URL || "/api";
+
+
+
+// Contact page — feedback form (EmailJS + DB), office hours, social links, and FAQ for Login Sports Academy
 const Contact = () => {
-  const [formData, setFormData] = useState({ name: '', email: '', phone: '', message: '' })
-  const [loading, setLoading] = useState(false)
-  const [status, setStatus] = useState(null)
+  const [formData, setFormData] = useState({
+    name: "",
+    email: "",
+    phone: "",
+    message: ""
+  });
+  const [loading, setLoading] = useState(false);
 
+  useEffect(
+  // Initialize AOS scroll animations for contact sections on page load
+  () => {
+    AOS.init({
+      duration: 1000,
+      easing: "ease-in-out-cubic",
+      once: false,
+      offset: 80,
+      disable: false
+    });
+    AOS.refresh();
+  }, []);
+
+  // Update form field value (name, email, phone, or message) as user types
   const handleChange = e => {
-    setFormData(prev => ({ ...prev, [e.target.name]: e.target.value }))
-  }
+    setFormData({ ...formData, [e.target.name]: e.target.value });
+  };
 
   // Submit feedback: save to database then send email + auto-reply via EmailJS
   const handleSubmit = async e => {
@@ -42,8 +68,8 @@ const Contact = () => {
       // Then send email via EmailJS
       try {
         await emailjs.send(
-          "service_hvi4aa5",
-          "template_e19fi3a",
+          "service_ecp1fzd",
+          "template_gos1gyj",
           {
             from_name: formData.name,
             from_email: formData.email,
@@ -55,7 +81,7 @@ const Contact = () => {
         );
         
         // Send auto-reply
-        await emailjs.send("service_hvi4aa5", "template_e19fi3a", {
+        await emailjs.send("service_ecp1fzd", "template_paafjhg", {
           from_name: formData.name,
           phone: formData.phone,
         }, "mbQp-0kZOmadPSjVn");
@@ -112,213 +138,307 @@ const Contact = () => {
     }
   };
 
+  const contactMethods = [
+    { icon: <FaPhone size={28} />, link: 'tel:+919952139201', title: "Phone", value: "+91 99521-39201", color: "#00D4FF" },
+    { icon: <FaEnvelope size={28} />, link: 'mailto:loginsportsacademy@gmail.com', title: "Email", value: "loginsportsacademy@gmail.com", color: "#FFB800" },
+    { icon: <FaMapMarkerAlt size={28} />, link: 'https://maps.google.com/?q=Login+Sports+Academy+Salem', title: "Location", value: "Nethimedu, Salem - 636002", color: "#00D4FF" },
+    { icon: <FaWhatsapp size={28} />, link: 'https://wa.me/919952139201', title: "WhatsApp", value: "+91 99521-39201", color: "#25D366" }
+  ];
+
+  const officeHours = [
+    { day: "Tue - Sat (Swimming)", hours: "6:00 AM - 6:00 PM" },
+    { day: "Sun & Mon (Swimming)", hours: "6:00 AM - 6:00 PM (Public)" },
+    { day: "Mon - Fri (Badminton)", hours: "5:00 AM - 10:00 PM" },
+    { day: "Sat & Sun (Badminton)", hours: "10:00 AM - 8:00 PM" }
+  ];
+
+  const socialMedia = [
+    { icon: <FaInstagram size={24} />, name: "Instagram", color: "#E4405F", link: "https://www.instagram.com/loginsportsacademy" },
+    { icon: <FaWhatsapp size={24} />, name: "WhatsApp", color: "#25D366", link: "https://wa.me/919952139201" },
+  ];
+
+  const mainStyle = {
+    minHeight: "auto",
+    overflow: "hidden",
+    position: "relative"
+  };
+
+  const [hoveredCard, setHoveredCard] = useState(null);
+  const [submitHovered, setSubmitHovered] = useState(false);
+  const [socialHovered, setSocialHovered] = useState(null);
+
   return (
-    <div>
+    <div style={{ fontFamily: "'Inter', sans-serif", backgroundColor: "#050810", color: "#fff", overflowX: "hidden" }}>
       <Navbar />
 
-      <section className="hero-pool" style={{ paddingTop: 92 }}>
-        <Container className="section-pad">
-          <Row className="align-items-center g-4">
-            <Col lg={6}>
-              <div data-reveal className="reveal">
-                <div style={{ fontWeight: 800, opacity: 0.9 }}>Contact</div>
-                <h1 className="mt-2" style={{ fontSize: 'clamp(2.2rem, 4.6vw, 3.6rem)', lineHeight: 1.04 }}>
-                  Send a message. We’ll guide the next step.
-                </h1>
-                <p className="mt-3" style={{ opacity: 0.9, lineHeight: 1.7, maxWidth: 640 }}>
-                  Share the swimmer’s age, comfort level, and your goal (confidence, technique, fitness, or competition).
-                  We’ll recommend the best starting track.
-                </p>
+      {/* ======================= IMMERSIVE HERO ======================= */}
+      <section style={{
+        position: "relative",
+        minHeight: "65vh",
+        display: "flex",
+        alignItems: "center",
+        justifyContent: "center",
+        textAlign: "center",
+        padding: "100px 20px 50px",
+        overflow: "hidden"
+      }}>
+        {/* Background Image with Parallax & Ken Burns Effect */}
+        <div style={{
+          position: "absolute",
+          top: 0, left: 0, right: 0, bottom: 0,
+          backgroundImage: "url('/assets/home_hero_indian.png')",
+          backgroundSize: "cover",
+          backgroundPosition: "center",
+          animation: "kenBurns 20s infinite alternate ease-in-out",
+          zIndex: 0
+        }} />
+        
+        {/* Cinematic Gradient Overlay */}
+        <div style={{
+          position: "absolute",
+          top: 0, left: 0, right: 0, bottom: 0,
+          background: "linear-gradient(to bottom, rgba(5,8,16,0.6) 0%, rgba(5,8,16,0.9) 70%, #050810 100%)",
+          zIndex: 1
+        }} />
 
-                <div className="d-flex flex-wrap gap-2 mt-4">
-                  <a href={`mailto:${BRAND.email}`} className="btn btn-foam">
-                    Email Us
-                  </a>
-                  <Link to="/programs" className="btn btn-ocean">
-                    View Programs
-                  </Link>
-                </div>
+        <div style={{ zIndex: 2, maxWidth: "900px" }} data-aos="zoom-out" data-aos-duration="1200">
+          <div className="mb-4 d-inline-flex align-items-center gap-3 px-4 py-2" style={{
+            background: "rgba(255,255,255,0.05)",
+            backdropFilter: "blur(12px)",
+            borderRadius: "50px",
+            border: "1px solid rgba(255,255,255,0.1)"
+          }}>
+            <FaHeadset style={{ color: "#00D4FF" }} />
+            <span style={{ fontSize: "0.9rem", letterSpacing: "1px", textTransform: "uppercase", fontWeight: 600 }}>We're Here To Help</span>
+          </div>
+          
+          <h1 style={{
+            fontFamily: "'Orbitron', sans-serif",
+            fontSize: "clamp(2.5rem, 6vw, 4.5rem)",
+            fontWeight: 900,
+            lineHeight: 1.1,
+            marginBottom: "20px",
+            textShadow: "0 10px 30px rgba(0,0,0,0.5)"
+          }}>
+            GET IN <span style={{ background: "linear-gradient(135deg, #00D4FF, #FFB800)", WebkitBackgroundClip: "text", WebkitTextFillColor: "transparent" }}>TOUCH</span>
+          </h1>
+          
+          <p style={{
+            fontSize: "clamp(1.1rem, 2vw, 1.3rem)",
+            color: "rgba(255,255,255,0.85)",
+            maxWidth: "700px",
+            margin: "0 auto",
+            lineHeight: 1.6,
+            textShadow: "0 2px 4px rgba(0,0,0,0.5)"
+          }}>
+            Have a question about our programs, membership, or timings? Drop us a message and our team will get back to you shortly.
+          </p>
+        </div>
+      </section>
 
-                <div className="mt-4" style={{ padding: 20, borderRadius: 18, background: 'rgba(0,119,182,0.15)', backdropFilter: 'blur(16px)', WebkitBackdropFilter: 'blur(16px)', border: '1px solid rgba(255,255,255,0.25)', boxShadow: '0 8px 32px rgba(0,119,182,0.12)' }}>
-                  <div className="d-flex align-items-start gap-3">
-                    <div
-                      className="bg-white bg-opacity-10"
-                      style={{
-                        width: 42,
-                        height: 42,
-                        borderRadius: 14,
-                        display: 'grid',
-                        placeItems: 'center',
-                      }}
-                    >
-                      <FaEnvelope />
+      {/* ======================= CONTACT BENTO SECTION ======================= */}
+      <section style={{ padding: "0 0 100px", position: "relative", zIndex: 5, marginTop: "-80px" }}>
+        <div className="container">
+          <div className="row g-4 mb-4">
+            {/* Form Section */}
+            <div className="col-lg-7" data-aos="fade-up" data-aos-delay="0">
+              <div className="bento-contact-card h-100" style={{ padding: "50px" }}>
+                <h3 style={{ fontFamily: "'Orbitron', sans-serif", fontSize: "1.8rem", fontWeight: 800, marginBottom: "30px", color: "#fff" }}>
+                  Send a <span style={{ color: "#FFB800" }}>Message</span>
+                </h3>
+                
+                <form onSubmit={handleSubmit} className="bento-form">
+                  <div className="row g-3">
+                    <div className="col-md-6">
+                      <input type="text" name="name" className="bento-input" placeholder="Your Name" value={formData.name} onChange={handleChange} required />
                     </div>
-                    <div>
-                      <div style={{ fontWeight: 900 }}>Email</div>
-                      <div style={{ opacity: 0.9 }}>{BRAND.email}</div>
+                    <div className="col-md-6">
+                      <input type="email" name="email" className="bento-input" placeholder="Your Email" value={formData.email} onChange={handleChange} required />
                     </div>
-                  </div>
-                  <div className="d-flex align-items-start gap-3 mt-3">
-                    <div
-                      className="bg-white bg-opacity-10"
-                      style={{
-                        width: 42,
-                        height: 42,
-                        borderRadius: 14,
-                        display: 'grid',
-                        placeItems: 'center',
-                      }}
-                    >
-                      <FaPhone />
+                    <div className="col-12">
+                      <input type="tel" name="phone" className="bento-input" pattern="[0-9]{10,14}" minLength="10" maxLength="14" placeholder="WhatsApp Number (10 digits)" value={formData.phone} onChange={handleChange} required />
                     </div>
-                    <div>
-                      <div style={{ fontWeight: 900 }}>Phone</div>
-                      <div style={{ opacity: 0.9 }}>
-                        {[BRAND.phonePrimary, BRAND.phoneSecondary, BRAND.phoneTertiary].filter(Boolean).map((phone, i) => (
-                          <div key={i}><a href={`tel:${phone.replace(/\s+/g, '')}`} style={{ color: 'inherit', textDecoration: 'none' }}>{phone}</a></div>
-                        ))}
-                      </div>
+                    <div className="col-12">
+                      <textarea name="message" className="bento-input" placeholder="Your Message" rows="5" value={formData.message} onChange={handleChange} required></textarea>
                     </div>
-                  </div>
-                  <div className="d-flex align-items-start gap-3 mt-3">
-                    <div
-                      className="bg-white bg-opacity-10"
-                      style={{
-                        width: 42,
-                        height: 42,
-                        borderRadius: 14,
-                        display: 'grid',
-                        placeItems: 'center',
-                      }}
-                    >
-                      <FaRegClock />
-                    </div>
-                    <div>
-                      <div style={{ fontWeight: 900 }}>Response time</div>
-                      <div style={{ opacity: 0.9 }}>Typically within 24 hours.</div>
-                    </div>
-                  </div>
-                </div>
-              </div>
-            </Col>
-
-            <Col lg={6}>
-              <div data-reveal className="reveal" style={{ padding: 24, borderRadius: 20, background: 'rgba(0,180,216,0.12)', backdropFilter: 'blur(20px)', WebkitBackdropFilter: 'blur(20px)', border: '1px solid rgba(0,180,216,0.3)', boxShadow: '0 8px 32px rgba(0,180,216,0.15)', color: '#fff' }}>
-                <h2 style={{ fontSize: '1.4rem', color: '#fff' }}>Send a message</h2>
-                <p style={{ color: 'rgba(255,255,255,0.85)', marginBottom: 14 }}>
-                  This goes directly to our inbox and is saved for follow-up.
-                </p>
-
-                {status?.message ? (
-                  <Alert variant={status.type} className="mb-3">
-                    {status.message}
-                  </Alert>
-                ) : null}
-
-                <Form onSubmit={handleSubmit}>
-                  <Row className="g-3">
-                    <Col md={6}>
-                      <Form.Group>
-                        <Form.Label style={{ fontWeight: 800, color: '#fff' }}>Name</Form.Label>
-                        <Form.Control
-                          name="name"
-                          value={formData.name}
-                          onChange={handleChange}
-                          placeholder="Your name"
-                          required
-                        />
-                      </Form.Group>
-                    </Col>
-                    <Col md={6}>
-                      <Form.Group>
-                        <Form.Label style={{ fontWeight: 800, color: '#fff' }}>Email</Form.Label>
-                        <Form.Control
-                          type="email"
-                          name="email"
-                          value={formData.email}
-                          onChange={handleChange}
-                          placeholder="you@example.com"
-                          required
-                        />
-                      </Form.Group>
-                    </Col>
-                    <Col md={6}>
-                      <Form.Group>
-                        <Form.Label style={{ fontWeight: 800, color: '#fff' }}>Phone / WhatsApp</Form.Label>
-                        <Form.Control
-                          type="tel"
-                          inputMode="tel"
-                          name="phone"
-                          value={formData.phone}
-                          onChange={handleChange}
-                          placeholder="Your number"
-                          required
-                        />
-                      </Form.Group>
-                    </Col>
-                    <Col md={6}>
-                      <Form.Group>
-                        <Form.Label style={{ fontWeight: 800, color: '#fff' }}>Topic</Form.Label>
-                        <Form.Control value="Swimming training" disabled />
-                      </Form.Group>
-                    </Col>
-                    <Col xs={12}>
-                      <Form.Group>
-                        <Form.Label style={{ fontWeight: 800, color: '#fff' }}>Message</Form.Label>
-                        <Form.Control
-                          as="textarea"
-                          rows={5}
-                          name="message"
-                          value={formData.message}
-                          onChange={handleChange}
-                          placeholder="Tell us age, current level, and your goal."
-                          required
-                        />
-                      </Form.Group>
-                    </Col>
-                    <Col xs={12}>
-                      <button type="submit" className="btn btn-ocean w-100" disabled={loading}>
-                        {loading ? 'Sending…' : 'Send Message'}
+                    <div className="col-12 mt-4">
+                      <button type="submit" className="bento-btn w-100 justify-content-center" disabled={loading}>
+                        {loading ? "Sending..." : "Send Message"}
                       </button>
-                    </Col>
-                  </Row>
-                </Form>
+                    </div>
+                  </div>
+                </form>
               </div>
-            </Col>
-          </Row>
-        </Container>
-        <WaveSeparator fill="var(--foam-50)" />
-      </section>
+            </div>
 
-      <section style={{ background: 'rgba(52, 143, 203, 0.65)' }}>
-        <Container className="section-pad">
-          <Row className="g-4">
-            <Col lg={6}>
-              <div data-reveal className="reveal" style={{ padding: 22, borderRadius: 18, background: 'rgba(2,62,138,0.18)', backdropFilter: 'blur(18px)', WebkitBackdropFilter: 'blur(18px)', border: '1px solid rgba(2,62,138,0.25)', boxShadow: '0 8px 32px rgba(2,62,138,0.12)', color: '#fff' }}>
-                <h3 style={{ fontSize: '1.2rem', color: '#fff' }}>Before you message</h3>
-                <ul className="mb-0" style={{ color: 'rgba(255,255,255,0.9)', lineHeight: 1.9, paddingLeft: 18 }}>
-                  <li>Share age + current comfort level in water.</li>
-                  <li>Tell us your goal: confidence, technique, fitness, or competition.</li>
-                  <li>Mention any timing preference (morning/evening).</li>
-                </ul>
-              </div>
-            </Col>
-            <Col lg={6}>
-              <div data-reveal className="reveal" style={{ padding: 22, borderRadius: 18, background: 'rgba(144,224,239,0.18)', backdropFilter: 'blur(18px)', WebkitBackdropFilter: 'blur(18px)', border: '1px solid rgba(144,224,239,0.35)', boxShadow: '0 8px 32px rgba(144,224,239,0.12)', color: '#fff' }}>
-                <h3 style={{ fontSize: '1.2rem', color: '#fff' }}>Email</h3>
-                <p style={{ color: 'rgba(255,255,255,0.85)', marginBottom: 10 }}>
-                  Prefer email? Write to us anytime.
-                </p>
-                <a href={`mailto:${BRAND.email}`} className="btn btn-foam">
-                  {BRAND.email}
+            {/* Quick Links / Info Section */}
+            <div className="col-lg-5 d-flex flex-column gap-4">
+              {contactMethods.map((method, idx) => (
+                <a href={method.link} key={idx} className="bento-contact-mini-card" data-aos="fade-up" data-aos-delay={idx * 50}>
+                  <div className="contact-icon" style={{ backgroundColor: `${method.color}15`, color: method.color }}>
+                    {method.icon}
+                  </div>
+                  <div>
+                    <h5 style={{ color: "#fff", fontSize: "1rem", fontWeight: 700, margin: "0 0 5px 0" }}>{method.title}</h5>
+                    <p style={{ color: "rgba(255,255,255,0.6)", fontSize: "0.95rem", margin: 0, fontWeight: 500 }}>{method.value}</p>
+                  </div>
                 </a>
-              </div>
-            </Col>
-          </Row>
-        </Container>
-      </section>
-    </div>
-  )
-}
+              ))}
+            </div>
+          </div>
 
-export default Contact
+          <div className="row g-4">
+            {/* Office Hours */}
+            <div className="col-lg-6" data-aos="fade-up">
+              <div className="bento-contact-card h-100" style={{ padding: "40px" }}>
+                <div className="d-flex align-items-center gap-3 mb-4">
+                  <div className="contact-icon" style={{ backgroundColor: "rgba(0,212,255,0.15)", color: "#00D4FF" }}><FaClock size={24} /></div>
+                  <h4 style={{ fontFamily: "'Orbitron', sans-serif", fontSize: "1.5rem", fontWeight: 700, margin: 0 }}>Hours of Operation</h4>
+                </div>
+                
+                <div className="d-flex flex-column gap-3">
+                  {officeHours.map((item, idx) => (
+                    <div key={idx} className="d-flex justify-content-between align-items-center" style={{ paddingBottom: "12px", borderBottom: "1px solid rgba(255,255,255,0.05)" }}>
+                      <span style={{ color: "rgba(255,255,255,0.8)", fontWeight: 600, fontSize: "0.9rem" }}>{item.day}</span>
+                      <span style={{ color: "#FFD54F", fontWeight: 700, fontSize: "0.95rem" }}>{item.hours}</span>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            </div>
+
+            {/* FAQ */}
+            <div className="col-lg-6" data-aos="fade-up">
+              <div className="bento-contact-card h-100" style={{ padding: "40px" }}>
+                <div className="d-flex align-items-center gap-3 mb-4">
+                  <div className="contact-icon" style={{ backgroundColor: "rgba(255,184,0,0.15)", color: "#FFB800" }}><FaUsers size={24} /></div>
+                  <h4 style={{ fontFamily: "'Orbitron', sans-serif", fontSize: "1.5rem", fontWeight: 700, margin: 0 }}>FAQ</h4>
+                </div>
+
+                <div className="bento-faq-grid" style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "20px" }}>
+                  <div>
+                    <div style={{ fontWeight: 700, color: "#00D4FF", fontSize: "0.85rem", marginBottom: "8px" }}>What age groups?</div>
+                    <p style={{ color: "rgba(255,255,255,0.6)", fontSize: "0.8rem", margin: 0 }}>Swimming: all ages. Badminton: Age 6 and above. Beginners to advanced.</p>
+                  </div>
+                  <div>
+                    <div style={{ fontWeight: 700, color: "#FFB800", fontSize: "0.85rem", marginBottom: "8px" }}>Ladies only batch?</div>
+                    <p style={{ color: "rgba(255,255,255,0.6)", fontSize: "0.8rem", margin: 0 }}>Yes, exclusive ladies swimming batch Tue–Sat 10–11 AM.</p>
+                  </div>
+                  <div>
+                    <div style={{ fontWeight: 700, color: "#00D4FF", fontSize: "0.85rem", marginBottom: "8px" }}>Are coaches certified?</div>
+                    <p style={{ color: "rgba(255,255,255,0.6)", fontSize: "0.8rem", margin: 0 }}>Yes — FINA World Championship reps, ASCA Level 3, National players.</p>
+                  </div>
+                  <div>
+                    <div style={{ fontWeight: 700, color: "#FFB800", fontSize: "0.85rem", marginBottom: "8px" }}>Need special shoes?</div>
+                    <p style={{ color: "rgba(255,255,255,0.6)", fontSize: "0.8rem", margin: 0 }}>Yes, non-marking shoes are strictly mandatory for badminton.</p>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <style>{`
+        @keyframes kenBurns {
+          0% { transform: scale(1); }
+          100% { transform: scale(1.1); }
+        }
+
+        .bento-contact-card {
+          background: rgba(255,255,255,0.02);
+          backdrop-filter: blur(20px);
+          border: 1px solid rgba(255,255,255,0.08);
+          border-radius: 30px;
+          box-shadow: 0 20px 50px rgba(0,0,0,0.3);
+        }
+
+        .bento-contact-mini-card {
+          background: rgba(255,255,255,0.02);
+          border: 1px solid rgba(255,255,255,0.05);
+          border-radius: 20px;
+          padding: 25px;
+          display: flex;
+          align-items: center;
+          gap: 20px;
+          text-decoration: none;
+          transition: all 0.3s ease;
+        }
+
+        .bento-contact-mini-card:hover {
+          background: rgba(255,255,255,0.05);
+          border-color: rgba(255,255,255,0.15);
+          transform: translateY(-5px);
+        }
+
+        .contact-icon {
+          width: 60px;
+          height: 60px;
+          border-radius: 16px;
+          display: flex;
+          align-items: center;
+          justify-content: center;
+          flex-shrink: 0;
+        }
+
+        /* Form Inputs */
+        .bento-input {
+          background: rgba(255,255,255,0.03) !important;
+          border: 1px solid rgba(255,255,255,0.1) !important;
+          border-radius: 15px !important;
+          padding: 16px 20px !important;
+          color: #fff !important;
+          font-size: 0.95rem;
+          width: 100%;
+          transition: all 0.3s ease;
+        }
+
+        .bento-input::placeholder { color: rgba(255,255,255,0.4) !important; }
+
+        .bento-input:focus {
+          background: rgba(255,255,255,0.06) !important;
+          border-color: #00D4FF !important;
+          box-shadow: 0 0 15px rgba(0,212,255,0.2) !important;
+          outline: none !important;
+        }
+
+        textarea.bento-input {
+          resize: vertical;
+          min-height: 120px;
+        }
+
+        .bento-btn {
+          background: linear-gradient(135deg, #00D4FF, #0066FF);
+          color: white;
+          border: none;
+          padding: 16px 30px;
+          border-radius: 15px;
+          font-weight: 700;
+          font-size: 1rem;
+          display: flex;
+          align-items: center;
+          gap: 10px;
+          transition: all 0.3s ease;
+          cursor: pointer;
+        }
+
+        .bento-btn:hover:not(:disabled) {
+          transform: translateY(-3px);
+          box-shadow: 0 10px 20px rgba(0,212,255,0.3);
+        }
+
+        .bento-btn:disabled {
+          opacity: 0.7;
+          cursor: not-allowed;
+        }
+
+        @media (max-width: 768px) {
+          .bento-contact-card { padding: 30px 20px !important; }
+          .bento-faq-grid { grid-template-columns: 1fr !important; }
+        }
+      `}</style>
+    </div>
+  );
+};
+
+export default Contact;

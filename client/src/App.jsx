@@ -5,9 +5,8 @@
 
 import React from 'react'
 import { Navigate, Route, Routes, useLocation, useNavigate } from 'react-router-dom'
+import AOS from 'aos'
 import { clearAdminToken } from './utils/adminAuth'
-
-import { useScrollReveal } from './hooks/useScrollReveal'
 
 import AppErrorBoundary from './components/AppErrorBoundary'
 
@@ -15,10 +14,11 @@ import Footer from './components/Footer'
 
 import About from './pages/About'
 import Contact from './pages/Contact'
-import Gallery from './pages/Gallery'
 import Home from './pages/Home'
 import Membership from './pages/Membership'
 import Service from './pages/Service'
+import Shop from './pages/Shop'
+import Team from './pages/Team'
 
 import AdminDashboard from './pages/AdminPanel/AdminDashboard'
 import AdminLogin from './pages/AdminPanel/AdminLogin'
@@ -28,8 +28,12 @@ import LessonPlans from './pages/AdminPanel/LessonPlans'
 import Members from './pages/AdminPanel/Members'
 import MembersFeedback from './pages/AdminPanel/MembersFeedback'
 import OfflineMembership from './pages/AdminPanel/OfflineMembership'
+import DailyTracker from './pages/AdminPanel/DailyTracker'
 import Posts from './pages/AdminPanel/Posts'
 import WeeklyWorksheets from './pages/AdminPanel/WeeklyWorksheets'
+import PublicMemberCard from './pages/PublicMemberCard'
+import ManagePlans from './pages/AdminPanel/ManagePlans'
+import WhatsAppStatus from './pages/AdminPanel/WhatsAppStatus'
 
 
 
@@ -56,10 +60,6 @@ function ScannerExitRedirect() {
 
 function App() {
   const appLocation = useLocation()
-
-  // Enables smooth viewport-enter animations for elements using `data-reveal`.
-  useScrollReveal()
-
   // Conditionally renders the Footer only on public pages (not admin routes)
   function FooterMaybe() {
     const location = useLocation()
@@ -67,32 +67,74 @@ function App() {
     return <Footer />
   }
 
-  // Scrolls to top on every page navigation
+  // Scrolls to top and refreshes AOS animations on every page navigation
   function ScrollToTop() {
     const location = useLocation();
     React.useEffect(
-    // Runs scroll-to-top when the route changes
-    () => {
-      window.scrollTo(0, 0);
-    }, [location.pathname]);
+      // Runs scroll-to-top and AOS refresh when the route changes
+      () => {
+        window.scrollTo(0, 0);
+        setTimeout(
+          // Briefly delays AOS refresh to let DOM updates settle after navigation
+          () => {
+            if (typeof AOS.refreshHard === 'function') {
+              AOS.refreshHard();
+              return;
+            }
+            AOS.refresh();
+          }, 100);
+      }, [location.pathname]);
     return null;
   }
 
+  // Initialize AOS globally (prevents pages from appearing blank if AOS-driven elements
+  // are still at opacity: 0 after navigation).
+  React.useEffect(() => {
+    AOS.init({
+      duration: 1000,
+      easing: 'ease-in-out-cubic',
+      once: false,
+      offset: 80,
+      disable: false,
+    })
+    AOS.refresh()
+  }, [])
+
+  // Initialize scroll listener for AOS refresh
+  React.useEffect(
+    // Keeps AOS animations in sync by refreshing on scroll events
+    () => {
+      // Triggers AOS refresh on every scroll to detect newly visible elements
+      const handleScroll = () => {
+        AOS.refresh();
+      };
+      window.addEventListener('scroll', handleScroll);
+      return (
+        // Removes scroll event listener on component unmount
+        () => {
+          return window.removeEventListener('scroll', handleScroll);
+        }
+      );
+    }, []);
+
   return (
     <div className="app">
-      
+
       <main className="main-content">
-	  <ScannerExitRedirect />
-      <ScrollToTop />
+        <ScannerExitRedirect />
+        <ScrollToTop />
         <AppErrorBoundary resetKey={appLocation.pathname}>
           <Routes>
             <Route path="/" element={<Home />} />
             <Route path="/about" element={<About />} />
-            <Route path="/gallery" element={<Gallery />} />
             <Route path="/programs" element={<Service />} />
             <Route path="/membership" element={<Membership />} />
             <Route path="/contact" element={<Contact />} />
-            {/* <Route path="/admin" element={<Admin />} /> */}
+            <Route path="/team" element={<Team />} />
+            <Route path="/shop" element={<Shop />} />
+
+            {/* Public Member ID Card Route */}
+            <Route path="/member/id/:memberId" element={<PublicMemberCard />} />
 
             {/* Admin Panel Routes */}
             <Route path="/admin" element={<AdminLogin />} />
@@ -102,17 +144,21 @@ function App() {
             <Route path="/admin/feedback" element={<MembersFeedback />} />
             <Route path="/admin/worksheets" element={<WeeklyWorksheets />} />
             <Route path="/admin/posts" element={<Posts />} />
-		    <Route path="/admin/attendance" element={<AttendanceRecords />} />
-		    <Route path="/admin/attendance/scan" element={<AttendanceScan />} />
-		    <Route path="/admin/offline-membership" element={<OfflineMembership />} />
+            <Route path="/admin/attendance" element={<AttendanceRecords />} />
+            <Route path="/admin/attendance/scan" element={<AttendanceScan />} />
+            {/* OfflineMembership route is now admin-only, not public. Only accessible via admin panel UI. */}
+            <Route path="/admin/offline-membership" element={<OfflineMembership />} />
+            <Route path="/admin/daily-tracker" element={<DailyTracker />} />
+            <Route path="/admin/manage-plans" element={<ManagePlans />} />
+            <Route path="/admin/whatsapp-status" element={<WhatsAppStatus />} />
 
             {/* Fallbacks to avoid blank pages on removed/unknown routes */}
             <Route path="/admin/*" element={<Navigate to="/admin/dashboard" replace />} />
             <Route path="*" element={<Navigate to="/" replace />} />
           </Routes>
         </AppErrorBoundary>
-      </main> 
-	  <FooterMaybe />
+      </main>
+      <FooterMaybe />
     </div>
   )
 }

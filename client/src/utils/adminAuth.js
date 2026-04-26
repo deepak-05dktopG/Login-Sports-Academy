@@ -48,17 +48,7 @@ export const getAdminAuthHeaders = (baseHeaders = {}) => {
 };
 
 // Wraps the native fetch() with admin auth headers automatically attached
-export const adminFetch = async (url, options = {}) => {
+export const adminFetch = (url, options = {}) => {
     const headers = getAdminAuthHeaders(options.headers || {})
-    const response = await fetch(url, { ...options, headers })
-    
-    // Auto-logout if token is rejected (e.g., expired, deleted admin, or disabled)
-    if (response.status === 401 || response.status === 403) {
-      clearAdminToken()
-      if (window.location.pathname !== '/admin') {
-        window.location.href = '/admin'
-      }
-    }
-    
-    return response
+    return fetch(url, { ...options, headers })
 };

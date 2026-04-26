@@ -9,12 +9,12 @@ import Swal from 'sweetalert2';
 import { adminFetch, isAdminAuthenticated } from "../../utils/adminAuth";
 import { formatDateTime } from "../../utils/dateTime";
 import { FaPlusCircle, FaImages, FaImage, FaTimes, FaUpload, FaTrash } from "react-icons/fa";
-import AdminNavbar from "../../components/adminPanel/AdminNavbar";
+import AdminLayout from "../../components/adminPanel/AdminLayout";
 
 const apiBase = import.meta.env.VITE_API_BASE_URL || "/api";
 
 /**
- * Bluefins admin screen: Content Management.
+ * Login Sports Academy admin screen: Content Management.
  * Admins publish announcements (posts) and curate the homepage/gallery images.
  * Images are uploaded to Cloudinary and the returned URL is stored in the DB.
  */
@@ -540,18 +540,11 @@ const Posts = () => {
   };
 
   return (
-    <div
-      style={{
-        minHeight: "100vh",
-        background: "linear-gradient(135deg, #0a0e27 0%, #1a1f3a 50%, #0f1629 100%)",
-        fontFamily: "Poppins, system-ui",
-      }}
-    >
-      <AdminNavbar />
-      <div style={{ padding: "clamp(22px, 6vw, 50px) clamp(14px, 4vw, 20px) clamp(18px, 6vw, 40px)", maxWidth: "1400px", margin: "0 auto" }}>
+    <AdminLayout>
+      <div style={{ padding: "0 40px 60px 40px", maxWidth: "1400px", margin: "0 auto" }}>
         {/* Header */}
         <div style={{ marginBottom: "30px" }}>
-          <h1 style={{ color: "#fff", fontSize: "clamp(1.7rem, 5vw, 2.5rem)", fontWeight: "700", marginBottom: "10px" }}>
+          <h1 style={{ color: "#fff", fontSize: "2.5rem", fontWeight: "700", marginBottom: "10px" }}>
             📢 Content Management
           </h1>
           <p style={{ color: "#b0b0b0", fontSize: "1rem", marginBottom: "20px" }}>
@@ -1355,7 +1348,7 @@ const Posts = () => {
           </div>
         )}
       </div>
-    </div>
+    </AdminLayout>
   );
 };
 

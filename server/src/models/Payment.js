@@ -18,8 +18,12 @@ const paymentSchema = new mongoose.Schema(
 		providerSignature: { type: String },
 
 		amount: { type: Number, required: true },
+		// For offline discounts: the original (pre-discount) total, if a discount was applied.
+		amountOriginal: { type: Number },
 		pricing: {
 			subtotal: { type: Number },
+			discountPct: { type: Number, min: 0, max: 100 },
+			discountAmount: { type: Number, min: 0 },
 			commission: { type: Number },
 			gst: { type: Number },
 			total: { type: Number },
@@ -32,8 +36,10 @@ const paymentSchema = new mongoose.Schema(
 		currency: { type: String, default: 'INR' },
 
 		status: { type: String, enum: ['created', 'paid', 'failed'], default: 'created', index: true },
-		// `mock` is kept for legacy documents. New documents should use `cash` for offline/manual payments.
-		provider: { type: String, enum: ['cash', 'mock', 'razorpay'], default: 'cash' },
+		// Allowed providers including razorpay for online payments.
+		provider: { type: String, enum: ['cash', 'gpay', 'razorpay', 'mock', 'phonepay', 'paytm'], default: 'cash' },
+		// Allowed payment methods.
+		paymentMethod: { type: String, enum: ['cash', 'gpay', 'razorpay', 'mock', 'phonepay', 'paytm'], default: 'cash', index: true },
 		collectedBy: { type: String, trim: true },
 
 		membershipGroupId: { type: String, index: true },

@@ -8,9 +8,8 @@ import { useNavigate } from "react-router-dom";
 import api from "../../api/api";
 import { isAdminAuthenticated, setAdminToken } from "../../utils/adminAuth";
 import Navbar from "../../components/Navbar";
+import AdminLayout from "../../components/adminPanel/AdminLayout";
 import { FaLock, FaRocket } from "react-icons/fa";
-
-import { BRAND } from "../../content/brand";
 
 // Admin login page — authenticates admin/owner credentials via JWT before granting panel access
 const AdminLogin = () => {
@@ -50,19 +49,7 @@ const AdminLogin = () => {
   };
 
   return (
-    <div
-      style={{
-        minHeight: "100vh",
-        background: "linear-gradient(135deg, #0a0e27 0%, #1a1f3a 50%, #0f1629 100%)",
-        fontFamily: "Poppins, system-ui",
-        display: "flex",
-        alignItems: "center",
-        justifyContent: "center",
-        padding: "20px",
-        position: "relative",
-        overflow: "hidden",
-      }}
-    >
+    <AdminLayout showNavbar={false} style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '20px' }}>
       <Navbar />
       {/* Animated Background Orbs */}
       <div
@@ -169,7 +156,7 @@ const AdminLogin = () => {
               textAlign: "center",
             }}
           >
-            Secure access to {BRAND.name} administration
+            Secure access to Login Sports Academy administration
           </p>
         </div>
 
@@ -340,7 +327,7 @@ const AdminLogin = () => {
           }
         }
       `}</style>
-    </div>
+    </AdminLayout>
   );
 };
 

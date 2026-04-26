@@ -14,6 +14,7 @@ const memberSchema = new mongoose.Schema(
 
 		planId: { type: mongoose.Schema.Types.ObjectId, ref: 'MembershipPlan', required: true },
 		planType: { type: String },
+		serviceType: { type: String, enum: ['swimming', 'badminton', 'general'], default: 'swimming' },
 		category: { type: String, enum: ['infant', 'kids', 'adult'] },
 		membershipGroupId: { type: String, index: true },
 
@@ -34,7 +35,14 @@ const memberSchema = new mongoose.Schema(
 		qrCode: { type: String },
 		qrPayload: { type: String },
 
-		reminderSent: { type: Boolean, default: false },
+		reminderSent7: { type: Boolean, default: false },
+		reminderSent3: { type: Boolean, default: false },
+		reminderSent1: { type: Boolean, default: false },
+
+		// Partial payment tracking
+		paidAmount: { type: Number, default: null },
+		pendingAmount: { type: Number, default: 0 },
+		paymentStatus: { type: String, enum: ['paid', 'partial', 'pending'], default: 'paid' },
 	},
 	{ timestamps: true }
 )

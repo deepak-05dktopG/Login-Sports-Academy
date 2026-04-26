@@ -1,3 +1,5 @@
+// Add Daily Tracker entry utility
+import { addDailyTrackerEntry } from '../api/dailyTracker';
 /**
  * What it is: Website page (Membership screen).
  * Non-tech note: This is where users view/buy membership and related actions.
@@ -9,6 +11,7 @@ import { Link } from 'react-router-dom'
 import Navbar from '../components/Navbar'
 import { downloadMemberIdCard } from '../utils/idCard'
 import { formatDateTime, formatHHmmTo12Hour } from '../utils/dateTime'
+import { FaSwimmingPool, FaTableTennis } from 'react-icons/fa'
 
 const apiBase = import.meta.env.VITE_API_BASE_URL || '/api'
 
@@ -145,9 +148,19 @@ const normalizeAge = v => {
   if (v == null || v === '') return { ok: true, age: undefined }
   const n = Number(v)
   if (!Number.isFinite(n)) return { ok: false, message: 'Age must be a number' }
-  if (n < 1 || n > 120) return { ok: false, message: 'Age must be between 1 and 120' }
   return { ok: true, age: Math.floor(n) }
 };
+
+/**
+ * Convert a date to YYYY-MM-DD in local time for input[type="date"]
+ */
+const formatDateYMD = d => {
+  if (!d || isNaN(d.getTime())) return ''
+  const year = d.getFullYear()
+  const month = String(d.getMonth() + 1).padStart(2, '0')
+  const day = String(d.getDate()).padStart(2, '0')
+  return `${year}-${month}-${day}`
+}
 
 /**
  * Human-friendly payment method label for the Result panel.
@@ -161,11 +174,12 @@ const paymentTypeLabel = provider => {
 };
 
 /**
- * Bluefins public booking flow: pick a plan, enter details, pay via Razorpay.
+ * Login Sports Academy public booking flow: pick a sport, pick a plan, enter details, pay via Razorpay.
  * After successful payment verification, the member(s) are created and QR ID cards are available.
  */
 const Membership = () => {
   const [step, setStep] = useState(STEP.PLAN)
+  const [selectedService, setSelectedService] = useState('swimming')
 
   const [plans, setPlans] = useState([])
   const [loadingPlans, setLoadingPlans] = useState(false)
@@ -285,6 +299,13 @@ const Membership = () => {
     return computedPricing?.total ?? computedSubtotal
   }, [computedPricing, computedSubtotal])
 
+  const hasOnlineCharges = useMemo(/**
+   * Used to show a clear note that online checkout includes gateway fee + GST.
+   */
+  () => {
+    return Boolean(computedPricing && (computedPricing.commission > 0 || computedPricing.gst > 0))
+  }, [computedPricing])
+
   const computedExpiryPreview = useMemo(/**
    * Preview of the end time/expiry shown before checkout.
    * Public Batch uses slot end-time; memberships use durationInDays from today.
@@ -380,7 +401,7 @@ const Membership = () => {
   };
 
   /**
-    * Admin-only utility: seed default Bluefins plans into the database.
+    * Admin-only utility: seed default Login Sports Academy plans into the database.
    */
   const seedPlans = async () => {
     setError('')
@@ -662,7 +683,7 @@ const Membership = () => {
         key: order.keyId,
         amount: order.amountPaise,
         currency: order.currency || 'INR',
-        name: 'Bluefins Aquatic Solutions',
+        name: 'Login Sports Academy',
         description: order?.plan?.planName || 'Membership',
         order_id: order.orderId,
         prefill: {
@@ -691,11 +712,12 @@ const Membership = () => {
             setResult(verifyJson?.data)
             setStep(STEP.DONE)
             if (selectedPlan.type !== 'family') setMember(emptyMember)
-          } catch (e) {
-            setError(e.message)
-          } finally {
-            setBusy(false)
-          }
+
+            } catch (e) {
+              setError(e.message)
+            } finally {
+              setBusy(false)
+            }
         },
         modal: {
           /**
@@ -705,7 +727,7 @@ const Membership = () => {
             setBusy(false)
           },
         },
-        theme: { color: '#0077B6' },
+        theme: { color: '#00D4FF' },
       })
 
       rzp.on('payment.failed', /**
@@ -726,7 +748,14 @@ const Membership = () => {
 
   const pageBg = {
     minHeight: '100vh',
-    background: 'var(--grad-ocean)',
+    background: 'var(--gradient-primary)',
+  }
+
+  const glassCard = {
+    background: 'var(--glass-bg)',
+    border: '1px solid var(--glass-border)',
+    borderRadius: 14,
+    backdropFilter: 'blur(10px)',
   }
 
   /**
@@ -833,7 +862,7 @@ const Membership = () => {
                       <div style={{ color: '#fff', fontWeight: 900, fontSize: 14 }}>{m.name}</div>
                       <div style={{ color: 'rgba(255,255,255,0.85)', fontSize: 12 }}>{m.phone}</div>
                       <div style={{ color: 'rgba(255,255,255,0.75)', fontSize: 12 }}>
-                        Customer ID: BF-{String(m._id).slice(-8).toUpperCase()}
+                        Customer ID: LSA-{String(m._id).slice(-8).toUpperCase()}
                       </div>
                     </div>
                     <button
@@ -847,6 +876,7 @@ const Membership = () => {
                         try {
                           await downloadMemberIdCard({
                             name: m.name,
+                            phone: m.phone,
                             memberId: m._id,
                             qrDataUrl: m.qrCode,
                             planName: result?.plan?.planName,
@@ -877,19 +907,66 @@ const Membership = () => {
   };
 
   return (
-    <div style={pageBg} className="membership-page">
+    <div style={{ fontFamily: "'Inter', sans-serif", backgroundColor: "#050810", color: "#fff", overflowX: "hidden" }}>
       <Navbar />
-      <div className="container-fluid membership-container">
-        <div className="membership-grid">
-          <div className="membership-main">
-            <div className="p-3 p-md-4 membership-shell">
-              <div className="membership-header">
-                <div>
-                  <h4 className="membership-title">Membership</h4>
-                  <div className="membership-subtitle">
-                    Choose a plan and pay securely. Your membership and QR ID card are generated after successful payment.
+
+      {/* ======================= IMMERSIVE HERO ======================= */}
+      <section style={{
+        position: "relative",
+        minHeight: "50vh",
+        display: "flex",
+        alignItems: "center",
+        justifyContent: "center",
+        textAlign: "center",
+        padding: "100px 20px",
+        overflow: "hidden"
+      }}>
+        {/* Background Image with Parallax & Ken Burns Effect */}
+        <div style={{
+          position: "absolute",
+          top: 0, left: 0, right: 0, bottom: 0,
+          backgroundImage: "url('/assets/home_hero_indian.png')",
+          backgroundSize: "cover",
+          backgroundPosition: "center",
+          animation: "kenBurns 20s infinite alternate ease-in-out",
+          zIndex: 0
+        }} />
+        
+        {/* Cinematic Gradient Overlay */}
+        <div style={{
+          position: "absolute",
+          top: 0, left: 0, right: 0, bottom: 0,
+          background: "linear-gradient(to bottom, rgba(5,8,16,0.6) 0%, rgba(5,8,16,0.9) 60%, #050810 100%)",
+          zIndex: 1
+        }} />
+
+        <div style={{ zIndex: 2, maxWidth: "900px" }} data-aos="zoom-out" data-aos-duration="1200">
+          <h1 style={{
+            fontFamily: "'Orbitron', sans-serif",
+            fontSize: "clamp(2.5rem, 5vw, 4rem)",
+            fontWeight: 900,
+            lineHeight: 1.1,
+            marginBottom: "15px",
+            textShadow: "0 10px 30px rgba(0,0,0,0.5)"
+          }}>
+            BECOME A <span style={{ color: "#00D4FF" }}>MEMBER</span>
+          </h1>
+          <p style={{ color: "rgba(255,255,255,0.7)", fontSize: "1.1rem", maxWidth: "600px", margin: "0 auto" }}>
+            Choose a plan, pay securely, and get your digital QR ID Card instantly.
+          </p>
+        </div>
+      </section>
+
+      {/* ======================= MEMBERSHIP APP ======================= */}
+      <section style={{ padding: "0 0 100px", position: "relative", zIndex: 5, marginTop: "-60px" }}>
+        <div className="container">
+          <div className="row justify-content-center">
+            <div className="col-lg-10">
+              <div className="bento-membership-card" data-aos="fade-up">
+                <div className="d-flex justify-content-between align-items-center mb-4">
+                  <div>
+                    <h4 style={{ fontFamily: "'Orbitron', sans-serif", fontWeight: 800, margin: 0 }}>Registration Portal</h4>
                   </div>
-                </div>
 
                 <div className="d-flex gap-2">
                   <button className="btn btn-light btn-sm" onClick={fetchPlans} disabled={loadingPlans || busy}>
@@ -923,9 +1000,26 @@ const Membership = () => {
               <div className="membership-main-body mt-3">
                   {step === STEP.PLAN ? (
                     <div className="membership-card membership-section">
-                      <h6 style={{ color: '#fff', margin: 0, fontWeight: 900 }}>Special membership & training offers</h6>
+                      <h6 style={{ color: '#fff', margin: 0, fontWeight: 800 }}>Choose a service & plan</h6>
+
+                      {/* ===== SPORT TABS ===== */}
+                      <div className="sport-tabs mt-3 mb-3">
+                        <button
+                          className={`sport-tab sport-tab--swimming ${selectedService === 'swimming' ? 'sport-tab--active' : ''}`}
+                          onClick={() => { setSelectedService('swimming'); setSelectedPlanId(''); }}
+                        >
+                          <FaSwimmingPool /> Swimming
+                        </button>
+                        <button
+                          className={`sport-tab sport-tab--badminton ${selectedService === 'badminton' ? 'sport-tab--active' : ''}`}
+                          onClick={() => { setSelectedService('badminton'); setSelectedPlanId(''); }}
+                        >
+                          <FaTableTennis /> Badminton
+                        </button>
+                      </div>
+
                       <div style={{ color: 'rgba(255,255,255,0.78)', fontSize: 12, marginTop: 6 }}>
-                        Pick one offer below to continue.
+                        Showing {selectedService === 'swimming' ? '🏊 Swimming' : '🏸 Badminton'} plans
                       </div>
 
                       {loadingPlans ? (
@@ -936,103 +1030,73 @@ const Membership = () => {
                         </div>
                       ) : null}
 
-                      {plans.length ? (
-                        <>
-                          {plans.some(p => p?.type === 'public') ? (
-                            <div className="mt-3">
-                              <div style={{ color: 'rgba(255,255,255,0.9)', fontWeight: 900, fontSize: 13 }}>
-                                Public batch (per session)
-                              </div>
-                              <div className="membership-plan-grid mt-2">
-                                {plans
-                                  .filter(p => p?.type === 'public')
-                                  .map(p => {
-                                    const isSelected = p._id === selectedPlanId
-                                    const label = p.planName || p.name || 'Public Batch'
-                                    const typeLabel = PLAN_TYPE_LABEL[p.type] || p.type || 'Plan'
-                                    return (
-                                      <button
-                                        key={p._id}
-                                        type="button"
-                                        className={`membership-plan-card ${isSelected ? 'membership-plan-card--active' : ''}`}
-                                        onClick={() => setSelectedPlanId(p._id)}
-                                      >
-                                        <div className="membership-plan-top">
-                                          <div>
-                                            <div className="membership-plan-name">{label}</div>
-                                            <div className="membership-plan-sub">
-                                              {typeLabel}{planCardMeta(p) ? ` • ${planCardMeta(p)}` : ''}
-                                            </div>
-                                          </div>
-                                          <div className="membership-plan-price">{planCardPrice(p)}</div>
-                                        </div>
-                                      </button>
-                                    )
-                                  })}
-                              </div>
-                            </div>
-                          ) : null}
+                      {plans.filter(p => (p.serviceType || 'swimming') === selectedService).length ? (
+                        <div className="membership-plan-grid mt-3">
+                          {plans.filter(p => (p.serviceType || 'swimming') === selectedService).map(/**
+                              * Render the plan selection cards.
+                           */
+                          p => {
+                            const isSelected = p._id === selectedPlanId
+                            const label = p.planName || p.name || 'Membership Plan'
+                            const typeLabel = PLAN_TYPE_LABEL[p.type] || p.type || 'Plan'
 
-                          <div className="mt-3">
-                            <div style={{ color: 'rgba(255,255,255,0.9)', fontWeight: 900, fontSize: 13 }}>
-                              Membership plans
-                            </div>
-                            <div className="membership-plan-grid mt-2">
-                              {plans
-                                .filter(p => p?.type !== 'public')
-                                .map(p => {
-                                  const isSelected = p._id === selectedPlanId
-                                  const label = p.planName || p.name || 'Membership Plan'
-                                  const typeLabel = PLAN_TYPE_LABEL[p.type] || p.type || 'Plan'
-                                  return (
-                                    <button
-                                      key={p._id}
-                                      type="button"
-                                      className={`membership-plan-card ${isSelected ? 'membership-plan-card--active' : ''}`}
-                                      onClick={() => setSelectedPlanId(p._id)}
-                                    >
-                                      <div className="membership-plan-top">
-                                        <div>
-                                          <div className="membership-plan-name">{label}</div>
-                                          <div className="membership-plan-sub">
-                                            {typeLabel}{planCardMeta(p) ? ` • ${planCardMeta(p)}` : ''}
-                                          </div>
-                                        </div>
-                                        <div className="membership-plan-price">{planCardPrice(p)}</div>
-                                      </div>
-
-                                      {p.originalPrice && p.originalPrice > p.basePrice ? (
-                                          <div className="membership-plan-tag">Save ₹{p.originalPrice - p.basePrice}</div>
-                                      ) : null}
-                                    </button>
-                                  )
-                                })}
-                            </div>
-                          </div>
-                        </>
-                      ) : null}
-
-                      {selectedPlan?.categoryRequired ? (
-                        <div className="mt-3">
-                          <label className="form-label" style={{ color: '#fff' }}>
-                            Category
-                          </label>
-                          <select
-                            className="form-select form-select-sm"
-                            value={selection.category}
-                            onChange={/**
-                             * Update the selected pricing category.
-                             */
-                            e => {
-                              return setSelection({ ...selection, category: e.target.value });
-                            }}
-                          >
-                            <option value="infant">{CATEGORY_LABEL.infant}</option>
-                            <option value="kids">{CATEGORY_LABEL.kids}</option>
-                            <option value="adult">{CATEGORY_LABEL.adult}</option>
-                          </select>
+                            return (
+                              <button
+                                key={p._id}
+                                type="button"
+                                className={`membership-plan-card ${isSelected ? 'membership-plan-card--active' : ''}`}
+                                onClick={/**
+                                 * Select this plan.
+                                 */
+                                () => {
+                                  return setSelectedPlanId(p._id);
+                                }}
+                              >
+                                <div className="membership-plan-top">
+                                  <div>
+                                    <div className="membership-plan-name">{label}</div>
+                                    <div className="membership-plan-sub">
+                                      {typeLabel}{planCardMeta(p) ? ` • ${planCardMeta(p)}` : ''}
+                                    </div>
+                                  </div>
+                                  <div className="membership-plan-price">{planCardPrice(p)}</div>
+                                </div>
+                                {p.type === 'public' ? (
+                                  <div className="membership-plan-tag">Public Batch</div>
+                                ) : p.type === 'family' ? (
+                                  <div className="membership-plan-tag">Family</div>
+                                ) : null}
+                              </button>
+                            );
+                          })}
                         </div>
                       ) : null}
+
+                      {selectedPlan ? (
+                        <div className="membership-subcard mt-3">
+                          <div className="membership-subcard-title">Plan options</div>
+
+                          {selectedPlan?.categoryRequired ? (
+                            <div className="mt-2">
+                              <label className="form-label" style={{ color: '#fff' }}>
+                                Category
+                              </label>
+                              <select
+                                className="form-select form-select-sm"
+                                value={selection.category}
+                                onChange={/**
+                                 * Update the selected pricing category.
+                                 */
+                                e => {
+                                  return setSelection({ ...selection, category: e.target.value });
+                                }}
+                              >
+                                <option value="infant">{CATEGORY_LABEL.infant}</option>
+                                <option value="kids">{CATEGORY_LABEL.kids}</option>
+                                <option value="adult">{CATEGORY_LABEL.adult}</option>
+                              </select>
+                            </div>
+                          ) : null}
 
                           {selectedPlan?.type === 'yearly' && (selectedPlan.addOns?.coachingAddOnMonthly || 0) > 0 ? (
                             <div className="form-check mt-3" style={{ color: '#fff' }}>
@@ -1065,11 +1129,15 @@ const Membership = () => {
                                     type="date"
                                     className="form-control form-control-sm"
                                     value={selection.publicSlot.date}
-                                    onChange={e =>
-                                      setSelection({
+                                    onChange={/**
+                                     * Set the booking date for a Public Batch session.
+                                     */
+                                    e => {
+                                      return setSelection({
                                         ...selection,
                                         publicSlot: { ...selection.publicSlot, date: e.target.value },
-                                      })
+                                      });
+                                    }
                                     }
                                   />
                                 </div>
@@ -1082,7 +1150,12 @@ const Membership = () => {
                                     min={1}
                                     className="form-control form-control-sm"
                                     value={selection.quantity}
-                                    onChange={e => setSelection({ ...selection, quantity: e.target.value })}
+                                    onChange={/**
+                                     * Set number of people for Public Batch (charged per person).
+                                     */
+                                    e => {
+                                      return setSelection({ ...selection, quantity: e.target.value });
+                                    }}
                                   />
                                 </div>
                                 <div className="col-6">
@@ -1093,11 +1166,15 @@ const Membership = () => {
                                     type="time"
                                     className="form-control form-control-sm"
                                     value={selection.publicSlot.startTime}
-                                    onChange={e =>
-                                      setSelection({
+                                    onChange={/**
+                                     * Set the session start time.
+                                     */
+                                    e => {
+                                      return setSelection({
                                         ...selection,
                                         publicSlot: { ...selection.publicSlot, startTime: e.target.value },
-                                      })
+                                      });
+                                    }
                                     }
                                   />
                                 </div>
@@ -1109,11 +1186,15 @@ const Membership = () => {
                                     type="time"
                                     className="form-control form-control-sm"
                                     value={selection.publicSlot.endTime}
-                                    onChange={e =>
-                                      setSelection({
+                                    onChange={/**
+                                     * Optional session end time (defaults to +1 hour if blank).
+                                     */
+                                    e => {
+                                      return setSelection({
                                         ...selection,
                                         publicSlot: { ...selection.publicSlot, endTime: e.target.value },
-                                      })
+                                      });
+                                    }
                                     }
                                   />
                                 </div>
@@ -1124,6 +1205,8 @@ const Membership = () => {
                               </div>
                             </div>
                           ) : null}
+                        </div>
+                      ) : null}
 
                       <div className="membership-subcard mt-3">
                         <div className="membership-subcard-title">Ready to book?</div>
@@ -1208,11 +1291,12 @@ const Membership = () => {
                                 <div className="d-flex align-items-center justify-content-between">
                                   <div style={{ color: '#fff', fontWeight: 700 }}>Member {idx + 1}</div>
                                   {familyMembers.length > 1 ? (
-                                    <button
-                                      type="button"
-                                      className="btn btn-sm btn-outline-light"
-                                      onClick={() => removeFamilyMemberRow(idx)}
-                                    >
+                                    <button className="btn btn-sm btn-outline-light" onClick={/**
+                                     * Remove this family member row.
+                                     */
+                                    () => {
+                                      return removeFamilyMemberRow(idx);
+                                    }}>
                                       Remove
                                     </button>
                                   ) : null}
@@ -1225,10 +1309,23 @@ const Membership = () => {
                                     <input
                                       className="form-control form-control-sm"
                                       value={fm.name}
-                                      onChange={e =>
-                                        setFamilyMembers(prev =>
-                                          prev.map((x, i) => (i === idx ? { ...x, name: e.target.value } : x))
-                                        )
+                                      onChange={/**
+                                       * Update this member’s name.
+                                       */
+                                      e => {
+                                        return setFamilyMembers(/**
+                                         * Update the row by index.
+                                         */
+                                        prev => {
+                                          return prev.map(/**
+                                           * Replace only the targeted row.
+                                           */
+                                          (x, i) => {
+                                            return (i === idx ? { ...x, name: e.target.value } : x);
+                                          });
+                                        }
+                                        );
+                                      }
                                       }
                                     />
                                   </div>
@@ -1239,10 +1336,23 @@ const Membership = () => {
                                     <input
                                       className="form-control form-control-sm"
                                       value={fm.phone || ''}
-                                      onChange={e =>
-                                        setFamilyMembers(prev =>
-                                          prev.map((x, i) => (i === idx ? { ...x, phone: e.target.value } : x))
-                                        )
+                                      onChange={/**
+                                       * Update this member’s WhatsApp number (optional).
+                                       */
+                                      e => {
+                                        return setFamilyMembers(/**
+                                         * Update the row by index.
+                                         */
+                                        prev => {
+                                          return prev.map(/**
+                                           * Replace only the targeted row.
+                                           */
+                                          (x, i) => {
+                                            return (i === idx ? { ...x, phone: e.target.value } : x);
+                                          });
+                                        }
+                                        );
+                                      }
                                       }
                                     />
                                   </div>
@@ -1253,10 +1363,23 @@ const Membership = () => {
                                     <input
                                       className="form-control form-control-sm"
                                       value={fm.age}
-                                      onChange={e =>
-                                        setFamilyMembers(prev =>
-                                          prev.map((x, i) => (i === idx ? { ...x, age: e.target.value } : x))
-                                        )
+                                      onChange={/**
+                                       * Update this member’s age.
+                                       */
+                                      e => {
+                                        return setFamilyMembers(/**
+                                         * Update the row by index.
+                                         */
+                                        prev => {
+                                          return prev.map(/**
+                                           * Replace only the targeted row.
+                                           */
+                                          (x, i) => {
+                                            return (i === idx ? { ...x, age: e.target.value } : x);
+                                          });
+                                        }
+                                        );
+                                      }
                                       }
                                     />
                                   </div>
@@ -1267,10 +1390,23 @@ const Membership = () => {
                                     <select
                                       className="form-select form-select-sm"
                                       value={fm.gender}
-                                      onChange={e =>
-                                        setFamilyMembers(prev =>
-                                          prev.map((x, i) => (i === idx ? { ...x, gender: e.target.value } : x))
-                                        )
+                                      onChange={/**
+                                       * Update this member’s gender.
+                                       */
+                                      e => {
+                                        return setFamilyMembers(/**
+                                         * Update the row by index.
+                                         */
+                                        prev => {
+                                          return prev.map(/**
+                                           * Replace only the targeted row.
+                                           */
+                                          (x, i) => {
+                                            return (i === idx ? { ...x, gender: e.target.value } : x);
+                                          });
+                                        }
+                                        );
+                                      }
                                       }
                                     >
                                       <option value="male">Male</option>
@@ -1387,6 +1523,31 @@ const Membership = () => {
                       <div style={{ color: 'rgba(255,255,255,0.82)', fontSize: 13, marginTop: 6 }}>
                         You will be redirected to Razorpay to complete the payment.
                       </div>
+
+              {hasOnlineCharges ? (
+              <div
+                className="mt-3"
+                style={{
+                  background: 'rgba(255,255,255,0.08)',
+                  border: '1px solid rgba(255,255,255,0.14)',
+                  borderRadius: 12,
+                  padding: 12,
+                  color: 'rgba(255,255,255,0.88)',
+                  fontSize: 13,
+                  lineHeight: 1.4,
+                }}
+              >
+                <div style={{ fontWeight: 900, color: '#fff' }}>Note about online charges</div>
+                <div style={{ marginTop: 6 }}>
+                  Online payments include payment gateway charges and applicable GST, so the total payable may be
+                  higher than the base plan amount.
+                </div>
+                <div style={{ marginTop: 6 }}>
+                  If you prefer to pay only the plan amount, please choose <b>offline registration</b> at the Login Sports Academy desk.
+                  If you need help, <Link to="/contact" style={{ color: '#00FFD4', fontWeight: 800 }}>contact us</Link>.
+                </div>
+              </div>
+              ) : null}
 
                       <div className="membership-pay-surface mt-3">
                         <div className="membership-pay-actions">
@@ -1547,11 +1708,35 @@ const Membership = () => {
                     </div>
                   </>
                 )}
+                </div>
               </div>
             </div>
           </div>
         </div>
-      </div>
+      </section>
+
+      <style>{`
+        @keyframes kenBurns {
+          0% { transform: scale(1); }
+          100% { transform: scale(1.1); }
+        }
+
+        .bento-membership-card {
+          background: rgba(255,255,255,0.03);
+          backdrop-filter: blur(20px);
+          border: 1px solid rgba(255,255,255,0.08);
+          border-radius: 30px;
+          padding: 40px;
+          box-shadow: 0 20px 50px rgba(0,0,0,0.3);
+        }
+
+        @media (max-width: 768px) {
+          .bento-membership-card {
+            padding: 20px;
+            border-radius: 20px;
+          }
+        }
+      `}</style>
     </div>
   );
 };

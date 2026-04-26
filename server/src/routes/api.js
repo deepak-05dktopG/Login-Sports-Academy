@@ -39,6 +39,15 @@ import {
   deleteGalleryImage,
   getGalleryStats
 } from '../controllers/galleryController.js';
+import {
+  getDailyTrackerByDate,
+  getAllTrackerEntries,
+  addDailyTrackerEntry,
+  updateDailyTrackerEntry,
+  deleteDailyTrackerById,
+  deleteDailyTrackerByDate,
+  deleteAllTrackerEntries
+} from '../controllers/dailyTrackerController.js';
 
 import {
   listPlans,
@@ -51,9 +60,15 @@ import {
   listMembers,
   bulkDeleteMembersByIds,
   deleteMember,
+  getPublicMemberData,
+  updateMember,
+  createPlan,
+  updatePlan,
+  deletePlan,
 } from '../controllers/membershipController.js';
 
 import { scanAttendance, listAttendance, exportAttendanceCsv, deleteAttendance, bulkDeleteAttendance, purgeAttendanceBefore } from '../controllers/attendanceController.js';
+import whatsappRoutes from './whatsappRoutes.js';
 
 
 const router = express.Router();
@@ -104,13 +119,20 @@ router.delete('/gallery/:id', requireAdminAuth, deleteGalleryImage);
 
 // Membership registration (Payment integration later)
 router.get('/membership/plans', listPlans);
+router.get('/membership/public-id/:id', getPublicMemberData);
 router.post('/membership/plans/seed', requireAdminAuth, seedOfficialPlans);
 router.post('/membership/register', registerPaidMembership);
+
+// Admin simple plan management
+router.post('/admin/membership/plans', requireAdminAuth, createPlan);
+router.patch('/admin/membership/plans/:id', requireAdminAuth, updatePlan);
+router.delete('/admin/membership/plans/:id', requireAdminAuth, deletePlan);
 
 // Admin-only: offline (cash) registration
 router.post('/admin/membership/offline-register', requireAdminAuth, registerOfflineMembership);
 
 router.get('/membership/members', requireAdminAuth, listMembers);
+router.put('/admin/membership/members/:id', requireAdminAuth, updateMember);
 router.post('/membership/members/bulk-delete', requireAdminAuth, bulkDeleteMembersByIds);
 router.delete('/membership/members/:id', requireAdminAuth, deleteMember);
 
@@ -126,5 +148,17 @@ router.get('/attendance/export', requireAdminAuth, exportAttendanceCsv);
 router.delete('/attendance/purge', requireAdminAuth, purgeAttendanceBefore);
 router.delete('/attendance/:id', requireAdminAuth, deleteAttendance);
 router.post('/attendance/bulk-delete', requireAdminAuth, bulkDeleteAttendance);
+
+// Daily Tracker routes
+router.get('/daily-tracker/all', requireAdminAuth, getAllTrackerEntries);
+router.get('/daily-tracker', requireAdminAuth, getDailyTrackerByDate);
+router.post('/daily-tracker', requireAdminAuth, addDailyTrackerEntry);
+router.patch('/daily-tracker/:id', requireAdminAuth, updateDailyTrackerEntry);
+router.delete('/daily-tracker/all', requireAdminAuth, deleteAllTrackerEntries);
+router.delete('/daily-tracker/:id', requireAdminAuth, deleteDailyTrackerById);
+router.delete('/daily-tracker', requireAdminAuth, deleteDailyTrackerByDate);
+
+// WhatsApp notification routes
+router.use('/whatsapp', whatsappRoutes);
 
 export default router;

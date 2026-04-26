@@ -84,7 +84,7 @@ const OwnerPanel = () => {
     setVerifyLoading(true);
 
     setTimeout(() => {
-      if (accessKey === "bluefins2025") {
+      if (accessKey === "loginsports2025") {
         setIsAuthorized(true);
         localStorage.setItem("isOwner", "true");
         setAccessKey("");
@@ -226,7 +226,7 @@ const OwnerPanel = () => {
                 margin: "0 0 10px",
               }}
             >
-              BLUEFINS
+              LOGIN SPORTS
             </h1>
             <p
               style={{
@@ -367,7 +367,7 @@ const OwnerPanel = () => {
             gap: "12px",
           }}
         >
-          <FaRocket /> Bluefins Owner Portal
+          <FaRocket /> Login Sports Academy Owner Portal
         </h1>
 
         <button
@@ -529,7 +529,7 @@ const OwnerPanel = () => {
                   
                   <a
                     href={selectedYearlyPlan.pdfUrl}
-                    download={`Bluefins_${selectedYearlyPlan.year}_Plan.pdf`}
+                    download={`LSA_${selectedYearlyPlan.year}_Plan.pdf`}
                     style={{
                       display: "inline-flex",
                       alignItems: "center",

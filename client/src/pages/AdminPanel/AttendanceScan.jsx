@@ -9,6 +9,7 @@ import Swal from 'sweetalert2'
 import { adminFetch, isAdminAuthenticated, clearAdminToken } from '../../utils/adminAuth'
 import { formatTime } from '../../utils/dateTime'
 import { FaCamera, FaSyncAlt, FaStopCircle, FaKeyboard } from 'react-icons/fa'
+import AdminLayout from '../../components/adminPanel/AdminLayout'
 
 // Read the response body safely and parse JSON (falls back to plain-text error message)
 const safeReadJson = async res => {
@@ -21,7 +22,57 @@ const safeReadJson = async res => {
 	}
 };
 
-
+// Helper to play distinct sounds based on scan results using Web Audio API
+const playAudioFeedback = (type) => {
+    try {
+        const AudioContext = window.AudioContext || window.webkitAudioContext;
+        if (!AudioContext) return;
+        const ctx = new AudioContext();
+        const osc = ctx.createOscillator();
+        const gain = ctx.createGain();
+        osc.connect(gain);
+        gain.connect(ctx.destination);
+        
+        switch (type) {
+            case 'success':
+                // Happy chime
+                osc.type = 'sine';
+                osc.frequency.setValueAtTime(523.25, ctx.currentTime); // C5
+                osc.frequency.setValueAtTime(659.25, ctx.currentTime + 0.1); // E5
+                gain.gain.setValueAtTime(0, ctx.currentTime);
+                gain.gain.linearRampToValueAtTime(0.5, ctx.currentTime + 0.05);
+                gain.gain.linearRampToValueAtTime(0, ctx.currentTime + 0.3);
+                osc.start(ctx.currentTime);
+                osc.stop(ctx.currentTime + 0.3);
+                break;
+            case 'warning':
+                // Double beep
+                osc.type = 'square';
+                osc.frequency.value = 400;
+                gain.gain.setValueAtTime(0, ctx.currentTime);
+                gain.gain.setValueAtTime(0.15, ctx.currentTime); // Beep 1
+                gain.gain.setValueAtTime(0, ctx.currentTime + 0.1);
+                gain.gain.setValueAtTime(0.15, ctx.currentTime + 0.2); // Beep 2
+                gain.gain.setValueAtTime(0, ctx.currentTime + 0.3);
+                osc.start(ctx.currentTime);
+                osc.stop(ctx.currentTime + 0.4);
+                break;
+            case 'error':
+                // Low buzz
+                osc.type = 'sawtooth';
+                osc.frequency.value = 150;
+                gain.gain.setValueAtTime(0, ctx.currentTime);
+                gain.gain.linearRampToValueAtTime(0.3, ctx.currentTime + 0.05);
+                gain.gain.linearRampToValueAtTime(0.3, ctx.currentTime + 0.4);
+                gain.gain.linearRampToValueAtTime(0, ctx.currentTime + 0.5);
+                osc.start(ctx.currentTime);
+                osc.stop(ctx.currentTime + 0.5);
+                break;
+        }
+    } catch {
+        // Ignore errors (user hasn't interacted, etc.)
+    }
+};
 
 export default /* Attendance scanner — scan member QR (or manual ID) to record daily check-in */
 function AttendanceScan() {
@@ -228,6 +279,7 @@ function AttendanceScan() {
 				setLastScan({ attendance, member, duplicate })
 
 				if (duplicate) {
+					playAudioFeedback('warning')
 					if (duplicateType === 'day') {
 						void showPopup({
 							icon: 'info',
@@ -247,6 +299,7 @@ function AttendanceScan() {
 				}
 
 				if (attendance?.result === 'rejected') {
+					playAudioFeedback('error')
 					void showPopup({
 						icon: 'warning',
 						title: 'Entry not allowed',
@@ -256,6 +309,7 @@ function AttendanceScan() {
 					return
 				}
 
+				playAudioFeedback('success')
 				void showPopup({
 					icon: 'success',
 					title: 'Checked in successfully',
@@ -263,6 +317,7 @@ function AttendanceScan() {
 					ms: 2000,
 				})
 			} catch (e) {
+				playAudioFeedback('error')
 				setLastScan({ error: e?.message || 'Scan failed' })
 				void showPopup({
 					icon: 'error',
@@ -550,16 +605,10 @@ function AttendanceScan() {
 
     const useFullViewportPreview = scanning
 
-    const tipText = 'Zoom the QR (bring it closer) and keep it centered inside the box.'
+    const tipText = 'Zoom the QR (bring it closer) and keep it centered.'
 
     return (
-        <div
-			style={{
-				minHeight: '100vh',
-				background: 'linear-gradient(135deg, #0a0e27 0%, #1a1f3a 50%, #0f1629 100%)',
-				fontFamily: 'Poppins, system-ui',
-			}}
-		>
+        <AdminLayout showNavbar={false}>
             {/* Intentionally hidden on scanner page */}
             <div style={{ padding: 'clamp(16px, 4vw, 40px)', maxWidth: '1400px', margin: '0 auto' }}>
 				<div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', flexWrap: 'wrap', gap: '14px', marginBottom: '20px' }}>
@@ -875,6 +924,6 @@ function AttendanceScan() {
 					</div>
 				</div>
 			</div>
-        </div>
+        </AdminLayout>
     );
 }

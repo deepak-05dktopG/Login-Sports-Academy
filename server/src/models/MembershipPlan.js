@@ -23,6 +23,13 @@ const membershipPlanSchema = new mongoose.Schema(
 			index: true,
 		},
 
+		serviceType: {
+			type: String,
+			enum: ['swimming', 'badminton'],
+			default: 'swimming',
+			index: true,
+		},
+
 		categoryRequired: { type: Boolean, default: false },
 
 		durationInDays: { type: Number, min: 1 },

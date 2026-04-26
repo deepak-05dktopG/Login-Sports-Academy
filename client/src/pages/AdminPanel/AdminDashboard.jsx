@@ -6,8 +6,7 @@
 import { useEffect } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import { isAdminAuthenticated } from "../../utils/adminAuth";
-import AdminNavbar from "../../components/adminPanel/AdminNavbar";
-import { BRAND } from "../../content/brand";
+import AdminLayout from "../../components/adminPanel/AdminLayout";
 import {
   FaArrowRight,
   FaBookmark,
@@ -16,7 +15,9 @@ import {
   FaFileAlt,
   FaQrcode,
   FaUsers,
+  FaWhatsapp,
 } from "react-icons/fa";
+import { formatHHmmTo12Hour } from "../../utils/dateTime";
 
 // Admin dashboard — landing page after login, shows navigation cards for all admin features
 const AdminDashboard = () => {
@@ -88,6 +89,14 @@ const AdminDashboard = () => {
       count: "",
     },
     {
+      title: "Daily Tracker",
+      description: "Track all daily entries, expenses, and download records",
+      icon: <FaClipboard />,
+      path: "/admin/daily-tracker",
+      color: "#00BFFF",
+      count: "",
+    },
+    {
       title: "Posts & Updates",
       description: "Create and manage announcements",
       icon: <FaFileAlt />,
@@ -95,34 +104,43 @@ const AdminDashboard = () => {
       color: "#FFB6C1",
       count: "",
     },
+    {
+      title: "WhatsApp Status",
+      description: "Manage WhatsApp connection and notification logs",
+      icon: <FaWhatsapp />,
+      path: "/admin/whatsapp-status",
+      color: "#25D366",
+      count: "",
+    },
   ];
 
   return (
-    <div
-      style={{
-        minHeight: "100vh",
-        background: "linear-gradient(135deg, #0a0e27 0%, #1a1f3a 50%, #0f1629 100%)",
-        fontFamily: "Poppins, system-ui",
-      }}
-    >
-      <AdminNavbar />
-      <div style={{ padding: "clamp(18px, 4vw, 40px)", maxWidth: "1400px", margin: "0 auto" }}>
-        {/* Welcome Section */}
-        <div style={{ marginBottom: "40px" }}>
-          <h1
-            style={{
-              color: "#00FFD4",
-              fontSize: "clamp(1.7rem, 5vw, 2.5rem)",
-              fontWeight: 900,
-              marginBottom: "10px",
-            }}
-          >
-            👋 Welcome to Admin Dashboard
-          </h1>
-          <p style={{ color: "rgba(255, 255, 255, 0.6)", fontSize: "clamp(1rem, 2.8vw, 1.1rem)" }}>
-            Manage all aspects of {BRAND.name}
-          </p>
-        </div>
+    <AdminLayout>
+        
+        <div style={{ padding: "0 40px 60px 40px", maxWidth: "1400px", margin: "0 auto" }}>
+          
+          {/* Welcome Section */}
+          <div style={{ marginBottom: "50px", display: "flex", alignItems: "center", gap: "20px" }}>
+            <div style={{ width: "80px", height: "80px", borderRadius: "20px", background: "linear-gradient(135deg, rgba(0,212,255,0.2), rgba(255,184,0,0.2))", display: "flex", alignItems: "center", justifyContent: "center", border: "1px solid rgba(255,255,255,0.1)" }}>
+              <img src="/assets/Logo.png" alt="Logo" style={{ width: "50px", filter: "drop-shadow(0 0 10px rgba(0,212,255,0.5))" }} />
+            </div>
+            <div>
+              <h1
+                style={{
+                  color: "#fff",
+                  fontSize: "clamp(2rem, 4vw, 2.8rem)",
+                  fontWeight: 900,
+                  margin: 0,
+                  letterSpacing: "-1px"
+                }}
+              >
+                Command <span style={{ color: "#00D4FF" }}>Center</span>
+              </h1>
+              <p style={{ color: "rgba(255, 255, 255, 0.5)", fontSize: "1.1rem", margin: "5px 0 0 0" }}>
+                Login Sports Academy Management Dashboard
+              </p>
+            </div>
+          </div>
 
         {/* Stats Section */}
         {/* <div
@@ -174,111 +192,135 @@ const AdminDashboard = () => {
           ))}
         </div> */}
 
-        {/* Main Dashboard Cards */}
-        <h2 style={{ color: "#00FFD4", marginBottom: "20px", fontSize: "1.8rem" }}>Quick Access</h2>
-        <div
-          style={{
-            display: "grid",
-            gridTemplateColumns: "repeat(auto-fit, minmax(260px, 1fr))",
-            gap: "25px",
-          }}
-        >
-          {dashboardCards.map(
-          // Render each admin feature as a clickable navigation card with icon and description
-          (card, index) => {
-            return (
-              <Link
-                key={index}
-                to={card.path}
-                style={{
-                  textDecoration: "none",
-                  background: "rgba(15, 25, 50, 0.7)",
-                  border: `1px solid ${card.color}`,
-                  borderRadius: "16px",
-                  padding: "30px",
-                  transition: "all 0.3s ease",
-                  position: "relative",
-                  overflow: "hidden",
-                }}
-                onMouseEnter={// Lift card up and add colored glow shadow on hover
-                e => {
-                  e.currentTarget.style.transform = "translateY(-8px)";
-                  e.currentTarget.style.boxShadow = `0 15px 40px rgba(${hexToRgb(card.color)}, 0.4)`;
-                }}
-                onMouseLeave={// Reset card position and remove shadow when mouse leaves
-                e => {
-                  e.currentTarget.style.transform = "translateY(0)";
-                  e.currentTarget.style.boxShadow = "none";
-                }}
-              >
-                {/* Background Gradient */}
-                <div
+          {/* Main Dashboard Cards (Bento Grid) */}
+          <div
+            style={{
+              display: "grid",
+              gridTemplateColumns: "repeat(auto-fill, minmax(320px, 1fr))",
+              gap: "24px",
+            }}
+          >
+            {dashboardCards.map(
+            (card, index) => {
+              return (
+                <Link
+                  key={index}
+                  to={card.path}
                   style={{
-                    position: "absolute",
-                    top: 0,
-                    right: 0,
-                    width: "150px",
-                    height: "150px",
-                    background: `radial-gradient(circle, ${card.color}20 0%, transparent 70%)`,
-                    borderRadius: "50%",
-                    transform: "translate(30%, -30%)",
+                    textDecoration: "none",
+                    background: "rgba(10, 14, 26, 0.6)",
+                    backdropFilter: "blur(20px)",
+                    WebkitBackdropFilter: "blur(20px)",
+                    border: "1px solid rgba(255, 255, 255, 0.05)",
+                    borderTop: `1px solid rgba(255, 255, 255, 0.1)`,
+                    borderRadius: "24px",
+                    padding: "32px",
+                    transition: "all 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275)",
+                    position: "relative",
+                    overflow: "hidden",
+                    display: "flex",
+                    flexDirection: "column",
+                    height: "100%",
                   }}
-                />
-                <div style={{ position: "relative", zIndex: 1 }}>
+                  onMouseEnter={
+                  e => {
+                    e.currentTarget.style.transform = "translateY(-5px) scale(1.02)";
+                    e.currentTarget.style.background = "rgba(15, 20, 35, 0.8)";
+                    e.currentTarget.style.borderColor = `rgba(${hexToRgb(card.color)}, 0.4)`;
+                    e.currentTarget.style.boxShadow = `0 20px 40px rgba(0,0,0,0.4), 0 0 20px rgba(${hexToRgb(card.color)}, 0.15)`;
+                  }}
+                  onMouseLeave={
+                  e => {
+                    e.currentTarget.style.transform = "translateY(0) scale(1)";
+                    e.currentTarget.style.background = "rgba(10, 14, 26, 0.6)";
+                    e.currentTarget.style.borderColor = "rgba(255, 255, 255, 0.05)";
+                    e.currentTarget.style.borderTopColor = "rgba(255, 255, 255, 0.1)";
+                    e.currentTarget.style.boxShadow = "none";
+                  }}
+                >
+                  {/* Subtle Gradient Spot inside card */}
                   <div
                     style={{
-                      fontSize: "2.5rem",
-                      color: card.color,
-                      marginBottom: "15px",
+                      position: "absolute",
+                      top: 0,
+                      right: 0,
+                      width: "150px",
+                      height: "150px",
+                      background: `radial-gradient(circle, ${card.color}15 0%, transparent 70%)`,
+                      borderRadius: "50%",
+                      transform: "translate(30%, -30%)",
+                      pointerEvents: "none"
                     }}
-                  >
-                    {card.icon}
-                  </div>
-
-                  <h3
-                    style={{
-                      color: card.color,
-                      fontSize: "1.4rem",
-                      fontWeight: 700,
-                      marginBottom: "10px",
-                    }}
-                  >
-                    {card.title}
-                  </h3>
-
-                  <p
-                    style={{
-                      color: "rgba(255, 255, 255, 0.7)",
-                      marginBottom: "20px",
-                      lineHeight: "1.6",
-                    }}
-                  >
-                    {card.description}
-                  </p>
-
-                  <div
-                    style={{
-                      display: "flex",
-                      justifyContent: "space-between",
-                      alignItems: "center",
-                    }}
-                  >
-                    <span
+                  />
+                  
+                  <div style={{ position: "relative", zIndex: 1, flex: 1, display: "flex", flexDirection: "column" }}>
+                    <div
                       style={{
+                        width: "56px",
+                        height: "56px",
+                        borderRadius: "16px",
+                        background: `rgba(${hexToRgb(card.color)}, 0.1)`,
+                        border: `1px solid rgba(${hexToRgb(card.color)}, 0.2)`,
+                        display: "flex",
+                        alignItems: "center",
+                        justifyContent: "center",
+                        fontSize: "1.5rem",
                         color: card.color,
-                        fontWeight: 700,
-                        fontSize: "0.9rem",
+                        marginBottom: "24px",
                       }}
                     >
-                      {card.count}
-                    </span>
-                    <FaArrowRight style={{ color: card.color }} />
+                      {card.icon}
+                    </div>
+
+                    <h3
+                      style={{
+                        color: "#fff",
+                        fontSize: "1.3rem",
+                        fontWeight: 700,
+                        marginBottom: "12px",
+                        letterSpacing: "-0.5px"
+                      }}
+                    >
+                      {card.title}
+                    </h3>
+
+                    <p
+                      style={{
+                        color: "rgba(255, 255, 255, 0.5)",
+                        marginBottom: "24px",
+                        lineHeight: "1.6",
+                        fontSize: "0.95rem",
+                        flex: 1
+                      }}
+                    >
+                      {card.description}
+                    </p>
+
+                    <div
+                      style={{
+                        display: "flex",
+                        justifyContent: "space-between",
+                        alignItems: "center",
+                        marginTop: "auto",
+                        borderTop: "1px solid rgba(255,255,255,0.05)",
+                        paddingTop: "16px"
+                      }}
+                    >
+                      <span
+                        style={{
+                          color: "rgba(255,255,255,0.8)",
+                          fontWeight: 600,
+                          fontSize: "0.9rem",
+                        }}
+                      >
+                        Manage <FaArrowRight style={{ marginLeft: "8px", color: card.color, fontSize: "0.8rem" }} />
+                      </span>
+                    </div>
                   </div>
-                </div>
-              </Link>
-            );
-          })}
-        </div>
+                </Link>
+              );
+            })}
+          </div>
 
         {/* Recent Activity Section */}
         {/* <div style={{ marginTop: "50px" }}>
@@ -319,7 +361,7 @@ const AdminDashboard = () => {
           </div>
         </div> */}
       </div>
-    </div>
+    </AdminLayout>
   );
 };
 

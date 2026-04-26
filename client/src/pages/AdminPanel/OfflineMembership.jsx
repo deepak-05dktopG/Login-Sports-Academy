@@ -1,3 +1,5 @@
+// Add Daily Tracker entry utility
+import { addDailyTrackerEntry } from '../../api/dailyTracker';
 /**
  * What it is: Admin panel page (Offline membership / cash registration).
  * Non-tech note: Admins can register members and generate their ID cards.
@@ -7,26 +9,42 @@ import { useEffect, useMemo, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { downloadMemberIdCard } from '../../utils/idCard'
 import { adminFetch, isAdminAuthenticated } from '../../utils/adminAuth'
-import AdminNavbar from '../../components/adminPanel/AdminNavbar'
+import AdminLayout from '../../components/adminPanel/AdminLayout'
+import { FaSwimmingPool, FaTableTennis } from 'react-icons/fa'
 
 const apiBase = import.meta.env.VITE_API_BASE_URL || '/api'
 
 const PLAN_TYPE_LABEL = {
-	summer: 'Summer Camp',
-	monthly: 'Monthly Training',
-	yearly: 'Individual (1 Year)',
-	family: 'Family (1 Year)',
-	public: 'Public Batch (Per Session)',
+    summer: 'Summer Camp',
+    monthly: 'Monthly Training',
+    yearly: 'Individual (1 Year)',
+    family: 'Family (1 Year)',
+    public: 'Public Batch (Per Session)',
 }
 
 const CATEGORY_LABEL = {
-	infant: 'Infant (2–6)',
-	kids: 'Kids (6–18)',
-	adult: 'Adult (18+)',
+    infant: 'Infant (2–6)',
+    kids: 'Kids (6–18)',
+    adult: 'Adult (18+)',
 }
 
 const emptyMember = { name: '', phone: '', age: '', gender: 'other' }
 const emptyFamilyMember = { name: '', phone: '', age: '', gender: 'other' }
+
+const round2 = n => {
+    const x = Number(n)
+    if (!Number.isFinite(x)) return 0
+    return Math.round((x + Number.EPSILON) * 100) / 100
+}
+
+const parseDiscountAmt = v => {
+    const raw = normalizeText(v)
+    if (!raw) return { ok: true, amount: 0 }
+    const n = Number(raw)
+    if (!Number.isFinite(n)) return { ok: false, message: 'Discount must be a number' }
+    if (n < 0) return { ok: false, message: 'Discount cannot be negative' }
+    return { ok: true, amount: n }
+}
 
 /**
  * Normalize free-text inputs from the offline desk registration form.
@@ -99,73 +117,97 @@ const safeReadJson = async res => {
     const raw = await res.text()
     if (!raw) return { ok: true, data: null }
     if (!contentType.includes('application/json')) {
-		return { ok: false, error: `Non-JSON response (${res.status}). Is the backend running?` }
-	}
+        return { ok: false, error: `Non-JSON response (${res.status}). Is the backend running?` }
+    }
     try {
-		return { ok: true, data: JSON.parse(raw) }
-	} catch {
-		return { ok: false, error: 'Failed to parse JSON response. Is the backend running?' }
-	}
+        return { ok: true, data: JSON.parse(raw) }
+    } catch {
+        return { ok: false, error: 'Failed to parse JSON response. Is the backend running?' }
+    }
 };
 
 const STEP = {
-	PLAN: 1,
-	DETAILS: 2,
-	DONE: 3,
+    PLAN: 1,
+    DETAILS: 2,
+    DONE: 3,
+}
+
+const OFFLINE_PAYMENT_METHOD_LABEL = {
+    cash: 'Cash',
+    gpay: 'GPay',
 }
 
 /**
- * Bluefins admin flow: Offline Membership Registration.
- * Used when a customer pays cash/in-hand at the pool/desk (no Razorpay).
+ * Login Sports Academy admin flow: Offline Membership Registration.
+ * Used when a customer pays cash/in-hand at the desk (no Razorpay).
  * Creates the member(s) and allows immediate ID card (QR) download.
  */
 const OfflineMembership = () => {
     const navigate = useNavigate()
     const [step, setStep] = useState(STEP.PLAN)
+    const [selectedService, setSelectedService] = useState('swimming')
     const [plans, setPlans] = useState([])
     const [loadingPlans, setLoadingPlans] = useState(false)
     const [testAmountInr, setTestAmountInr] = useState(null)
     const [selectedPlanId, setSelectedPlanId] = useState('')
     const [member, setMember] = useState(emptyMember)
     const [selection, setSelection] = useState({
-		category: 'kids',
-		coachingAddOn: false,
-		quantity: 1,
-		publicSlot: { date: '', startTime: '10:00', endTime: '' },
-	})
+    })
+    const [discountAmt, setDiscountAmt] = useState('')
+    const [paidAmountInput, setPaidAmountInput] = useState('')
+    const [paymentMethod, setPaymentMethod] = useState('cash')
     const [familyMembers, setFamilyMembers] = useState([emptyFamilyMember])
     const [collectedBy, setCollectedBy] = useState(/**
      * Load the last “Collected by” staff name to speed up desk workflows.
      */
-    () => {
-        try {
-			return localStorage.getItem('offlineCollectedBy') || ''
-		} catch {
-			return ''
-		}
-    })
+        () => {
+            try {
+                return localStorage.getItem('offlineCollectedBy') || ''
+            } catch {
+                return ''
+            }
+        })
     const [busy, setBusy] = useState(false)
     const [error, setError] = useState('')
     const [result, setResult] = useState(null)
 
+    // Join/Expiry date overrides — let admin backdate existing members
+    const todayStr = () => {
+        const d = new Date()
+        const year = d.getFullYear()
+        const month = String(d.getMonth() + 1).padStart(2, '0')
+        const day = String(d.getDate()).padStart(2, '0')
+        return `${year}-${month}-${day}`
+    }
+    const formatDateYMD = (d) => {
+        if (!d || isNaN(d.getTime())) return ''
+        const year = d.getFullYear()
+        const month = String(d.getMonth() + 1).padStart(2, '0')
+        const day = String(d.getDate()).padStart(2, '0')
+        return `${year}-${month}-${day}`
+    }
+    const [joinDate, setJoinDate] = useState(todayStr())
+    const [expiryDate, setExpiryDate] = useState('')
+    const [expiryManuallyEdited, setExpiryManuallyEdited] = useState(false)
+
     useEffect(/**
      * Admin-only guard: redirect to login if session is missing.
      */
-    () => {
-        if (!isAdminAuthenticated()) navigate('/admin')
-    }, [navigate])
+        () => {
+            if (!isAdminAuthenticated()) navigate('/admin')
+        }, [navigate])
 
     const selectedPlan = useMemo(/**
      * Resolve the selected plan object from the loaded plan list.
      */
-    () => {
-        return plans.find(/**
+        () => {
+            return plans.find(/**
          * Match the current selected plan id.
          */
-        p => {
-            return p._id === selectedPlanId;
-        }) || null;
-    }, [plans, selectedPlanId])
+                p => {
+                    return p._id === selectedPlanId;
+                }) || null;
+        }, [plans, selectedPlanId])
 
     /**
      * Format currency amounts for the summary panel.
@@ -180,65 +222,91 @@ const OfflineMembership = () => {
         * Compute the amount to collect (before any online fees).
         * Pricing rules differ by plan type (public per-session, category-based, etc.).
      */
-    () => {
-        if (testAmountInr != null) return Number(testAmountInr)
-        if (!selectedPlan) return null
+        () => {
+            if (testAmountInr != null) return Number(testAmountInr)
+            if (!selectedPlan) return null
 
-        if (selectedPlan.type === 'public') {
-			const qty = Number(selection.quantity || 1)
-			const safeQty = Number.isFinite(qty) && qty > 0 ? qty : 1
-			return (selectedPlan.basePrice || 0) * safeQty
-		}
+            if (selectedPlan.type === 'public') {
+                const qty = Number(selection.quantity || 1)
+                const safeQty = Number.isFinite(qty) && qty > 0 ? qty : 1
+                return (selectedPlan.basePrice || 0) * safeQty
+            }
 
-        if (selectedPlan.categoryRequired) {
-			const category = selection.category
-			const row = (selectedPlan.categoryPrices || []).find(/**
+            if (selectedPlan.categoryRequired) {
+                const category = selection.category
+                const row = (selectedPlan.categoryPrices || []).find(/**
              * Find the price row for the chosen category.
              */
-            x => {
-                return x.category === category;
-            })
-			return row ? row.price : null
-		}
+                    x => {
+                        return x.category === category;
+                    })
+                return row ? row.price : null
+            }
 
-        let base = selectedPlan.basePrice || 0
-        if (selectedPlan.type === 'yearly' && selection.coachingAddOn) {
-			base += selectedPlan.addOns?.coachingAddOnMonthly || 0
-		}
+            let base = selectedPlan.basePrice || 0
+            if (selectedPlan.type === 'yearly' && selection.coachingAddOn) {
+                base += selectedPlan.addOns?.coachingAddOnMonthly || 0
+            }
 
-        return base
-    }, [selectedPlan, selection, testAmountInr])
+            return base
+        }, [selectedPlan, selection, testAmountInr])
 
-    const computedTotal = useMemo(/**
-        * Total to collect for offline cash registrations.
-        * Note: no Razorpay fee/GST is applied here.
-     */
-    () => {
-        if (testAmountInr != null) return Number(testAmountInr)
-        // Offline cash registrations do not add Razorpay fee/GST.
-        return computedSubtotal
-    }, [computedSubtotal, testAmountInr])
+    // Unified discount calculation to ensure consistency
+    const { discountAmount, totalAfterDiscount } = useMemo(() => {
+        const subtotal = computedSubtotal;
+        if (subtotal == null) return { discountAmount: 0, totalAfterDiscount: null };
+        const disc = parseDiscountAmt(discountAmt);
+        const amt = disc.ok ? disc.amount : 0;
+        const discountAmtVal = Math.min(Number(subtotal), amt); // Cannot discount more than subtotal
+        const total = round2(Math.max(0, Number(subtotal) - discountAmtVal));
+        return { discountAmount: discountAmtVal, totalAfterDiscount: total };
+    }, [computedSubtotal, discountAmt]);
+
+    // For compatibility with existing code
+    const computedTotal = totalAfterDiscount;
+    const computedDiscountAmount = discountAmount;
 
     const peopleCount = useMemo(/**
         * Headcount summary shown in the side panel.
         * Family plans count members; public plans use the per-session quantity.
      */
-    () => {
-        if (!selectedPlan) return null
-        if (selectedPlan.type === 'family') return (familyMembers || []).length
-        if (selectedPlan.type === 'public') {
-			const qty = Number(selection.quantity || 1)
-			return Number.isFinite(qty) && qty > 0 ? qty : 1
-		}
-        return 1
-    }, [selectedPlan, familyMembers, selection.quantity])
+        () => {
+            if (!selectedPlan) return null
+            if (selectedPlan.type === 'family') return (familyMembers || []).length
+            if (selectedPlan.type === 'public') {
+                const qty = Number(selection.quantity || 1)
+                return Number.isFinite(qty) && qty > 0 ? qty : 1
+            }
+            return 1
+        }, [selectedPlan, familyMembers, selection.quantity])
 
     useEffect(/**
      * When switching away from Family plans, reset the family-members list.
      */
-    () => {
-        if (selectedPlan?.type !== 'family') setFamilyMembers([emptyFamilyMember])
-    }, [selectedPlan?.type])
+        () => {
+            if (selectedPlan?.type !== 'family') setFamilyMembers([emptyFamilyMember])
+        }, [selectedPlan?.type])
+
+    useEffect(/**
+     * Auto-compute the expiry date when the join date or plan changes,
+     * but only if the admin hasn't manually overridden the expiry date.
+     */
+        () => {
+            if (expiryManuallyEdited) return
+            if (!selectedPlan || !joinDate) { setExpiryDate(''); return }
+            const days = selectedPlan.durationInDays
+            if (!days || selectedPlan.type === 'public') { setExpiryDate(''); return }
+            const d = new Date(joinDate)
+            if (isNaN(d.getTime())) { setExpiryDate(''); return }
+            d.setDate(d.getDate() + days)
+            setExpiryDate(formatDateYMD(d))
+        }, [joinDate, selectedPlan, expiryManuallyEdited])
+
+    useEffect(() => {
+        if (selectedPlanId) {
+            setJoinDate(todayStr())
+        }
+    }, [selectedPlanId])
 
     /**
      * Fetch active membership plans so staff can pick a plan for offline signup.
@@ -247,55 +315,56 @@ const OfflineMembership = () => {
         setError('')
         setLoadingPlans(true)
         try {
-			const res = await fetch(`${apiBase}/membership/plans?isActive=true`)
-			const parsed = await safeReadJson(res)
-			if (!parsed.ok) throw new Error(parsed.error)
-			const data = parsed.data
-			if (!res.ok) throw new Error(data?.message || `Failed to load plans (${res.status})`)
-			if (typeof data?.meta?.testAmountInr === 'number' && Number.isFinite(data.meta.testAmountInr)) {
-				setTestAmountInr(data.meta.testAmountInr)
-			} else {
-				setTestAmountInr(null)
-			}
-			const list = data?.data || []
-			const typeOrder = ['public', 'monthly', 'summer', 'yearly', 'family']
-			const sorted = [...list].sort(/**
+            const res = await fetch(`${apiBase}/membership/plans?isActive=true`)
+            const parsed = await safeReadJson(res)
+            if (!parsed.ok) throw new Error(parsed.error)
+            const data = parsed.data
+            if (!res.ok) throw new Error(data?.message || `Failed to load plans (${res.status})`)
+            if (typeof data?.meta?.testAmountInr === 'number' && Number.isFinite(data.meta.testAmountInr)) {
+                setTestAmountInr(data.meta.testAmountInr)
+            } else {
+                setTestAmountInr(null)
+            }
+            // Public/daily-batch plans are managed via Daily Tracker — hide from offline registration
+            const list = (data?.data || []).filter(p => p.type !== 'public')
+            const typeOrder = ['monthly', 'summer', 'yearly', 'family']
+            const sorted = [...list].sort(/**
              * Sort plans into a staff-friendly order (type, then price, then name).
              */
-            (a, b) => {
-                const ai = typeOrder.indexOf(a?.type)
-                const bi = typeOrder.indexOf(b?.type)
-                const ao = ai === -1 ? typeOrder.length : ai
-                const bo = bi === -1 ? typeOrder.length : bi
-                if (ao !== bo) return ao - bo
-                const ap = Number(a?.basePrice ?? a?.price ?? 0)
-                const bp = Number(b?.basePrice ?? b?.price ?? 0)
-                if (ap !== bp) return ap - bp
-                return String(a?.planName ?? a?.name ?? '').localeCompare(String(b?.planName ?? b?.name ?? ''))
-            })
-			setPlans(sorted)
-			if (sorted.length && (!selectedPlanId || !sorted.some(/**
+                (a, b) => {
+                    const ai = typeOrder.indexOf(a?.type)
+                    const bi = typeOrder.indexOf(b?.type)
+                    const ao = ai === -1 ? typeOrder.length : ai
+                    const bo = bi === -1 ? typeOrder.length : bi
+                    if (ao !== bo) return ao - bo
+                    const ap = Number(a?.basePrice ?? a?.price ?? 0)
+                    const bp = Number(b?.basePrice ?? b?.price ?? 0)
+                    if (ap !== bp) return ap - bp
+                    return String(a?.planName ?? a?.name ?? '').localeCompare(String(b?.planName ?? b?.name ?? ''))
+                })
+            setPlans(sorted)
+            if (sorted.length && (!selectedPlanId || !sorted.some(/**
              * Ensure the selected plan still exists after refresh.
              */
-            p => {
-                return p._id === selectedPlanId;
-            }))) {
-				setSelectedPlanId(sorted[0]._id)
-			}
-		} catch (e) {
-			setError(e.message)
-		} finally {
-			setLoadingPlans(false)
-		}
+                p => {
+                    return p._id === selectedPlanId;
+                }))) {
+                setSelectedPlanId(sorted[0]._id)
+            }
+        } catch (e) {
+            setError(e.message)
+        } finally {
+            setLoadingPlans(false)
+        }
     };
 
     useEffect(/**
      * Initial load: fetch plans once when the screen opens.
      */
-    () => {
-        fetchPlans()
-        // eslint-disable-next-line react-hooks/exhaustive-deps
-    }, [])
+        () => {
+            fetchPlans()
+            // eslint-disable-next-line react-hooks/exhaustive-deps
+        }, [])
 
     /**
      * Validate the offline registration form before submitting.
@@ -304,49 +373,52 @@ const OfflineMembership = () => {
     const validate = () => {
         if (!selectedPlan) return 'Please select a plan'
         if (!normalizeText(collectedBy)) return 'Collected by (admin name) is required'
+        const disc = parseDiscountAmt(discountAmt)
+        if (!disc.ok) return disc.message
+        if (!OFFLINE_PAYMENT_METHOD_LABEL[paymentMethod]) return 'Select a valid payment method'
 
         // Shared validations
         if (selectedPlan.categoryRequired) {
-			if (!selection.category) return 'Select a category'
-			const allowed = (selectedPlan.categoryPrices || []).map(/**
+            if (!selection.category) return 'Select a category'
+            const allowed = (selectedPlan.categoryPrices || []).map(/**
              * Normalize allowed category keys from the plan config.
              */
-            x => {
-                return String(x?.category || '').toLowerCase();
-            })
-			if (allowed.length && !allowed.includes(String(selection.category).toLowerCase())) return 'Select a valid category'
-		}
+                x => {
+                    return String(x?.category || '').toLowerCase();
+                })
+            if (allowed.length && !allowed.includes(String(selection.category).toLowerCase())) return 'Select a valid category'
+        }
 
         if (selectedPlan.type === 'public') {
-			if (!selection.publicSlot?.date) return 'Select a date'
-			if (!selection.publicSlot?.startTime) return 'Select a start time'
-			const qty = Number(selection.quantity)
-			if (!Number.isFinite(qty) || qty < 1) return 'People must be at least 1'
-		}
+            if (!selection.publicSlot?.date) return 'Select a date'
+            if (!selection.publicSlot?.startTime) return 'Select a start time'
+            const qty = Number(selection.quantity)
+            if (!Number.isFinite(qty) || qty < 1) return 'People must be at least 1'
+        }
 
         if (selectedPlan.type === 'family') {
-			const contactName = normalizeText(member.name)
-			const contactPhone = normalizePhone10(member.phone)
-			if (!contactName) return 'Contact name is required'
-			if (!contactPhone) return 'Contact WhatsApp number is required'
-			if (!isValidPhone10(contactPhone)) return 'Contact WhatsApp number must be a valid 10-digit number'
-			const list = Array.isArray(familyMembers) ? familyMembers : []
-			if (!list.length) return 'Add at least 1 family member'
-			if (selectedPlan.maxMembers && list.length > selectedPlan.maxMembers) {
-				return `Maximum ${selectedPlan.maxMembers} members allowed for this plan`
-			}
-			for (const fm of list) {
-				const n = normalizeText(fm?.name)
-				if (!n) return 'Each family member needs a name'
-				const p = normalizePhone10(fm?.phone)
-				if (p && !isValidPhone10(p)) return 'Family member WhatsApp number must be a valid 10-digit number'
-				const g = normalizeGender(fm?.gender)
-				if (g === null) return 'Family member gender must be Male/Female/Other'
-				const a = normalizeAge(fm?.age)
-				if (!a.ok) return `Family member ${a.message}`
-			}
-			return ''
-		}
+            const contactName = normalizeText(member.name)
+            const contactPhone = normalizePhone10(member.phone)
+            if (!contactName) return 'Contact name is required'
+            if (!contactPhone) return 'Contact WhatsApp number is required'
+            if (!isValidPhone10(contactPhone)) return 'Contact WhatsApp number must be a valid 10-digit number'
+            const list = Array.isArray(familyMembers) ? familyMembers : []
+            if (!list.length) return 'Add at least 1 family member'
+            if (selectedPlan.maxMembers && list.length > selectedPlan.maxMembers) {
+                return `Maximum ${selectedPlan.maxMembers} members allowed for this plan`
+            }
+            for (const fm of list) {
+                const n = normalizeText(fm?.name)
+                if (!n) return 'Each family member needs a name'
+                const p = normalizePhone10(fm?.phone)
+                if (p && !isValidPhone10(p)) return 'Family member WhatsApp number must be a valid 10-digit number'
+                const g = normalizeGender(fm?.gender)
+                if (g === null) return 'Family member gender must be Male/Female/Other'
+                const a = normalizeAge(fm?.age)
+                if (!a.ok) return `Family member ${a.message}`
+            }
+            return ''
+        }
 
         const name = normalizeText(member.name)
         const phone = normalizePhone10(member.phone)
@@ -367,71 +439,70 @@ const OfflineMembership = () => {
     const submitOffline = async () => {
         const err = validate()
         if (err) {
-			setError(err)
-			return
-		}
+            setError(err)
+            return
+        }
 
         setBusy(true)
         setError('')
         try {
-			const normalizedMember = {
-				...member,
-				name: normalizeText(member?.name),
-				phone: normalizePhone10(member?.phone),
-				age: member?.age ? Number(member.age) : undefined,
-				gender: (normalizeGender(member?.gender) || 'other'),
-			}
+            const normalizedMember = {
+                ...member,
+                name: normalizeText(member?.name),
+                phone: normalizePhone10(member?.phone),
+                age: member?.age ? Number(member.age) : undefined,
+                gender: (normalizeGender(member?.gender) || 'other'),
+            }
 
-			const payload = {
-				collectedBy: normalizeText(collectedBy),
-				planId: selectedPlanId,
-				member: {
-					name: normalizedMember.name,
-					phone: normalizedMember.phone,
-					age: normalizedMember.age,
-					gender: normalizedMember.gender,
-				},
-				selection,
-				familyMembers: selectedPlan?.type === 'family'
-					? familyMembers.map(/**
+            const payload = {
+                collectedBy: normalizeText(collectedBy),
+                planId: selectedPlanId,
+                discountAmt: parseDiscountAmt(discountAmt).ok ? parseDiscountAmt(discountAmt).amount : 0,
+                paidAmount: paidAmountInput !== '' && !isNaN(Number(paidAmountInput)) ? Number(paidAmountInput) : undefined,
+                paymentMethod,
+                member: {
+                    name: normalizedMember.name,
+                    phone: normalizedMember.phone,
+                    age: normalizedMember.age,
+                    gender: normalizedMember.gender,
+                },
+                selection,
+                joinDate: joinDate || todayStr(),
+                expiryDate: expiryDate || undefined,
+                familyMembers: selectedPlan?.type === 'family'
+                    ? familyMembers.map(/**
                  * Normalize each family member record for storage.
                  */
-                m => {
-                    return ({
-                        name: normalizeText(m?.name),
-                        phone: normalizePhone10(m?.phone),
-                        age: m?.age ? Number(m.age) : undefined,
-                        gender: (normalizeGender(m?.gender) || 'other')
-                    });
-                })
-					: undefined,
-			}
+                        m => {
+                            return ({
+                                name: normalizeText(m?.name),
+                                phone: normalizePhone10(m?.phone),
+                                age: m?.age ? Number(m.age) : undefined,
+                                gender: (normalizeGender(m?.gender) || 'other')
+                            });
+                        })
+                    : undefined,
+            }
 
-			const res = await adminFetch(`${apiBase}/admin/membership/offline-register`, {
-				method: 'POST',
-				headers: {
-					'content-type': 'application/json',
-				},
-				body: JSON.stringify(payload),
-			})
-			const parsed = await safeReadJson(res)
-			if (!parsed.ok) throw new Error(parsed.error)
-			const data = parsed.data
-			if (!res.ok) throw new Error(data?.message || `Registration failed (${res.status})`)
+            const res = await adminFetch(`${apiBase}/admin/membership/offline-register`, {
+                method: 'POST',
+                headers: {
+                    'content-type': 'application/json',
+                },
+                body: JSON.stringify(payload),
+            })
+            const parsed = await safeReadJson(res)
+            if (!parsed.ok) throw new Error(parsed.error)
+            const data = parsed.data
+            if (!res.ok) throw new Error(data?.message || `Registration failed (${res.status})`)
 
-			try {
-				localStorage.setItem('offlineCollectedBy', normalizeText(collectedBy))
-			} catch {
-				// ignore
-			}
-
-			setResult(data?.data || null)
-			setStep(STEP.DONE)
-		} catch (e) {
-			setError(e.message)
-		} finally {
-			setBusy(false)
-		}
+            setResult(data?.data || null)
+            setStep(STEP.DONE)
+        } catch (e) {
+            setError(e.message)
+        } finally {
+            setBusy(false)
+        }
     };
 
     /**
@@ -442,7 +513,13 @@ const OfflineMembership = () => {
         setError('')
         setMember(emptyMember)
         setSelection({ category: 'kids', coachingAddOn: false, quantity: 1, publicSlot: { date: '', startTime: '10:00', endTime: '' } })
+        setDiscountAmt('')
+        setPaidAmountInput('')
+        setPaymentMethod('cash')
         setFamilyMembers([emptyFamilyMember])
+        setJoinDate(todayStr())
+        setExpiryDate('')
+        setExpiryManuallyEdited(false)
         setStep(STEP.PLAN)
     };
 
@@ -452,588 +529,758 @@ const OfflineMembership = () => {
     const planCardPrice = p => {
         if (!p) return '—'
         if (p.categoryRequired) {
-			const prices = (p.categoryPrices || [])
-				.map(/**
+            const prices = (p.categoryPrices || [])
+                .map(/**
              * Extract numeric price values.
              */
-            x => {
-                return Number(x?.price);
-            })
-				.filter(/**
+                    x => {
+                        return Number(x?.price);
+                    })
+                .filter(/**
              * Keep only valid positive prices.
              */
-            x => {
-                return Number.isFinite(x) && x > 0;
-            })
-			const min = prices.length ? Math.min(...prices) : null
-			return min == null ? '—' : `From ₹${min}`
-		}
+                    x => {
+                        return Number.isFinite(x) && x > 0;
+                    })
+            const min = prices.length ? Math.min(...prices) : null
+            return min == null ? '—' : `From ₹${min}`
+        }
         if (p.type === 'public') {
-			const base = Number(p.basePrice || 0)
-			return Number.isFinite(base) ? `₹${base} / person` : '—'
-		}
+            const base = Number(p.basePrice || 0)
+            return Number.isFinite(base) ? `₹${base} / person` : '—'
+        }
         const base = Number(p.basePrice || 0)
         return Number.isFinite(base) ? `₹${base}` : '—'
     };
 
     return (
-        <div style={{ minHeight: '100vh', background: 'linear-gradient(135deg, #0a0e27 0%, #1a1f3a 50%, #0f1629 100%)' }}>
-            <AdminNavbar />
-            <div className="container-fluid" style={{ padding: '28px 28px 60px 28px', maxWidth: 1600 }}>
-				<div className="d-flex align-items-center justify-content-between flex-wrap gap-3">
-					<div>
-						<h2 style={{ color: '#00FFD4', margin: 0, fontWeight: 900 }}>Offline Membership Registration</h2>
-						<div style={{ color: 'rgba(255,255,255,0.7)', marginTop: 6 }}>
-							Register customers who pay cash/in-hand (no Razorpay). Generates ID cards immediately.
-						</div>
-					</div>
-					<button className="btn btn-outline-light btn-sm" onClick={/**
+        <AdminLayout>
+                <div className="container-fluid" style={{ padding: '0 40px 60px 40px', maxWidth: '1400px', margin: '0 auto' }}>
+                <div className="d-flex align-items-center justify-content-between flex-wrap gap-3">
+                    <div>
+                        <h2 style={{ color: '#00FFD4', margin: 0, fontWeight: 900 }}>Offline Membership Registration</h2>
+                        <div style={{ color: 'rgba(255,255,255,0.7)', marginTop: 6 }}>
+                            Register customers who pay cash/in-hand (no Razorpay). Generates ID cards immediately.
+                        </div>
+                    </div>
+                    <button className="btn btn-outline-light btn-sm" onClick={/**
                      * Return to the main admin dashboard.
                      */
-                    () => {
-                        return navigate('/admin/dashboard');
-                    }}>
-						Back to Dashboard
-					</button>
-				</div>
+                        () => {
+                            return navigate('/admin/dashboard');
+                        }}>
+                        Back to Dashboard
+                    </button>
+                </div>
 
-				{error ? (
-					<div className="alert alert-danger mt-3" role="alert">
-						{error}
-					</div>
-				) : null}
+                {error ? (
+                    <div className="alert alert-danger mt-3" role="alert">
+                        {error}
+                    </div>
+                ) : null}
 
-				<div className="row g-3 mt-2">
-					<div className="col-12 col-lg-8">
-						<div className="p-3" style={{ background: 'rgba(255,255,255,0.06)', border: '1px solid rgba(255,255,255,0.12)', borderRadius: 16 }}>
-							<div className="d-flex align-items-center justify-content-between flex-wrap gap-2">
-								<div style={{ color: '#fff', fontWeight: 900 }}>
-									Step {step} / 3
-								</div>
-								<div style={{ color: 'rgba(255,255,255,0.7)', fontSize: 13 }}>
-									{step === STEP.PLAN ? 'Choose plan' : step === STEP.DETAILS ? 'Enter details' : 'Done'}
-								</div>
-							</div>
+                <div className="row g-3 mt-2">
+                    <div className="col-12 col-lg-8">
+                        <div className="p-3" style={{ background: 'rgba(255,255,255,0.06)', border: '1px solid rgba(255,255,255,0.12)', borderRadius: 16 }}>
+                            <div className="d-flex align-items-center justify-content-between flex-wrap gap-2">
+                                <div style={{ color: '#fff', fontWeight: 900 }}>
+                                    Step {step} / 3
+                                </div>
+                                <div style={{ color: 'rgba(255,255,255,0.7)', fontSize: 13 }}>
+                                    {step === STEP.PLAN ? 'Choose plan' : step === STEP.DETAILS ? 'Enter details' : 'Done'}
+                                </div>
+                            </div>
 
-							{step === STEP.PLAN ? (
-								<div className="mt-3">
-									<div className="row g-3">
-										<div className="col-12 col-md-6">
-											<label className="form-label" style={{ color: '#fff' }}>
-												Collected By (Admin name)
-											</label>
-											<input
-												className="form-control form-control-sm"
-												placeholder="Enter admin/staff name"
-												value={collectedBy}
-												onChange={/**
+                            {step === STEP.PLAN ? (
+                                <div className="mt-3">
+                                    {/* ===== SPORT TABS ===== */}
+                                    <div className="sport-tabs mb-3">
+                                        <button className={`sport-tab sport-tab--swimming ${selectedService === 'swimming' ? 'sport-tab--active' : ''}`}
+                                            onClick={() => { setSelectedService('swimming'); setSelectedPlanId(''); }}>
+                                            <FaSwimmingPool /> Swimming
+                                        </button>
+                                        <button className={`sport-tab sport-tab--badminton ${selectedService === 'badminton' ? 'sport-tab--active' : ''}`}
+                                            onClick={() => { setSelectedService('badminton'); setSelectedPlanId(''); }}>
+                                            <FaTableTennis /> Badminton
+                                        </button>
+                                    </div>
+
+                                    <div className="row g-3">
+                                        <div className="col-12 col-md-6">
+                                            <label className="form-label" style={{ color: '#fff' }}>
+                                                Collected By (Admin name)
+                                            </label>
+                                            <input
+                                                className="form-control form-control-sm"
+                                                placeholder="Enter admin/staff name"
+                                                value={collectedBy}
+                                                onChange={/**
                                                                  * Update “Collected by” staff name.
                                                  */
-                                                e => {
-                                                    return setCollectedBy(e.target.value);
-                                                }}
-											/>
-											<div style={{ color: 'rgba(255,255,255,0.65)', fontSize: 12, marginTop: 6 }}>
-												This name is saved with the cash registration.
-											</div>
-										</div>
-										<div className="col-12 col-md-6">
-											<label className="form-label" style={{ color: '#fff' }}>
-												Plan
-											</label>
-											{loadingPlans ? (
-												<div style={{ color: 'rgba(255,255,255,0.8)' }}>Loading plans…</div>
-											) : (
-												<select
-													className="form-select form-select-sm"
-													value={selectedPlanId}
-													onChange={/**
-                                                                 * Change the selected plan.
-                                                     */
                                                     e => {
-                                                        return setSelectedPlanId(e.target.value);
+                                                        return setCollectedBy(e.target.value);
                                                     }}
-												>
-            										{plans.map(/**
-            										 * Render each plan option.
-            										 */
-                                                    p => {
-                                                        return (
+                                            />
+                                            <div style={{ color: 'rgba(255,255,255,0.65)', fontSize: 12, marginTop: 6 }}>
+                                                This name is saved with the cash registration.
+                                            </div>
+                                        </div>
+                                        <div className="col-12 col-md-6">
+                                            <label className="form-label" style={{ color: '#fff' }}>
+                                                Plan
+                                            </label>
+                                            {loadingPlans ? (
+                                                <div style={{ color: 'rgba(255,255,255,0.8)' }}>Loading plans…</div>
+                                            ) : (
+                                                <select
+                                                    className="form-select form-select-sm"
+                                                    value={selectedPlanId}
+                                                    onChange={e => setSelectedPlanId(e.target.value)}
+                                                >
+                                                    {plans.filter(p => (p.serviceType || 'swimming') === selectedService).map(
+                                                        p => (
                                                             <option key={p._id} value={p._id}>
                                                                 {p.planName || p.name || 'Membership Plan'}({PLAN_TYPE_LABEL[p.type] || p.type})
-                                                                                                                        </option>
-                                                        );
-                                                    })}
-												</select>
-											)}
-										</div>
-									</div>
+                                                            </option>
+                                                        ))}
+                                                </select>
+                                            )}
+                                        </div>
+                                    </div>
 
-									{plans.length ? (
-										<div className="membership-plan-grid mt-3">
-											{plans.map(/**
-                                                 * Render the plan selection cards.
-                                             */
-                                            p => {
-                                                const isSelected = p._id === selectedPlanId
-                                                return (
-                                                    <button
-														key={p._id}
-														type="button"
-														className={`membership-plan-card ${isSelected ? 'membership-plan-card--active' : ''}`}
-														onClick={/**
+                                    {plans.filter(p => (p.serviceType || 'swimming') === selectedService).length ? (
+                                        <div className="membership-plan-grid mt-3">
+                                            {plans.filter(p => (p.serviceType || 'swimming') === selectedService).map(
+                                                p => {
+                                                    const isSelected = p._id === selectedPlanId
+                                                    return (
+                                                        <button
+                                                            key={p._id}
+                                                            type="button"
+                                                            className={`membership-plan-card ${isSelected ? 'membership-plan-card--active' : ''}`}
+                                                            onClick={/**
                                                                  * Select this plan.
                                                          */
-                                                        () => {
-                                                            return setSelectedPlanId(p._id);
-                                                        }}
-													>
-                                                        <div className="membership-plan-top">
-															<div>
-																<div className="membership-plan-name">{p.planName || p.name || 'Membership Plan'}</div>
-																<div className="membership-plan-sub">{PLAN_TYPE_LABEL[p.type] || p.type}</div>
-															</div>
-															<div className="membership-plan-price">{planCardPrice(p)}</div>
-														</div>
-                                                    </button>
-                                                );
-                                            })}
-										</div>
-									) : null}
-
-									<div className="d-flex justify-content-end mt-3">
-										<button
-											className="btn btn-success btn-sm"
-											onClick={/**
-                                                 * Move to the details step.
-                                             */
-                                            () => {
-                                                setError('')
-                                                setStep(STEP.DETAILS)
-                                            }}
-											disabled={!selectedPlan}
-										>
-											Continue
-										</button>
-									</div>
-								</div>
-							) : null}
-
-							{step === STEP.DETAILS ? (
-								<div className="mt-3">
-									<div style={{ color: '#fff', fontWeight: 900, marginBottom: 8 }}>Details</div>
-
-									{selectedPlan?.type === 'family' ? (
-										<div className="row g-2">
-											<div className="col-12 col-md-6">
-												<label className="form-label" style={{ color: '#fff' }}>Contact Name</label>
-												<input
-													className="form-control form-control-sm"
-													value={member.name}
-													onChange={/**
-                                                     * Update contact name for the family plan.
-                                                     */
-                                                    e => {
-                                                        return setMember({ ...member, name: e.target.value });
-                                                    }}
-												/>
-											</div>
-											<div className="col-12 col-md-6">
-												<label className="form-label" style={{ color: '#fff' }}>Contact WhatsApp Number</label>
-												<input
-													className="form-control form-control-sm"
-													value={member.phone}
-													onChange={/**
-                                                     * Update contact WhatsApp number for the family plan.
-                                                     */
-                                                    e => {
-                                                        return setMember({ ...member, phone: e.target.value });
-                                                    }}
-												/>
-											</div>
-										</div>
-									) : (
-										<div className="row g-2">
-											<div className="col-12 col-md-6">
-												<label className="form-label" style={{ color: '#fff' }}>Name</label>
-												<input className="form-control form-control-sm" value={member.name} onChange={/**
-                                                     * Update member name.
-                                                 */
-                                                e => {
-                                                    return setMember({ ...member, name: e.target.value });
-                                                }} />
-											</div>
-											<div className="col-12 col-md-6">
-												<label className="form-label" style={{ color: '#fff' }}>WhatsApp Number</label>
-												<input className="form-control form-control-sm" value={member.phone} onChange={/**
-                                                     * Update member WhatsApp number.
-                                                 */
-                                                e => {
-                                                    return setMember({ ...member, phone: e.target.value });
-                                                }} />
-											</div>
-										</div>
-									)}
-
-									{selectedPlan?.type === 'family' ? (
-										<div className="mt-3">
-											<div className="d-flex align-items-center justify-content-between">
-												<div style={{ color: '#fff', fontWeight: 900 }}>Family Members</div>
-												<button
-													type="button"
-													className="btn btn-outline-light btn-sm"
-													onClick={/**
-                                                     * Add an additional family member row.
-                                                     */
-                                                    () => {
-                                                        return setFamilyMembers(/**
-                                                         * Append a blank member template.
-                                                         */
-                                                        prev => {
-                                                            return [...prev, emptyFamilyMember];
-                                                        });
-                                                    }}
-												>
-													Add Member
-												</button>
-											</div>
-
-											<div className="mt-2" style={{ display: 'grid', gap: 10 }}>
-														{familyMembers.map(/**
-														 * Render each family member input block.
-														 */
-                                                (fm, idx) => {
-                                                    return (
-                                                        <div key={idx} className="p-2" style={{ borderRadius: 12, border: '1px solid rgba(255,255,255,0.14)', background: 'rgba(255,255,255,0.05)' }}>
-                                                            <div className="row g-2 align-items-end">
-                                                                <div className="col-12 col-md-4">
-                                                                    <label className="form-label" style={{ color: '#fff' }}>Name</label>
-                                                                    <input
-                                                                        className="form-control form-control-sm"
-                                                                        value={fm.name}
-                                                                        onChange={/**
-                                                                         * Update this family member’s name.
-                                                                         */
-                                                                        e => {
-                                                                            const next = [...familyMembers]
-                                                                            next[idx] = { ...next[idx], name: e.target.value }
-                                                                            setFamilyMembers(next)
-                                                                        }}
-                                                                    />
+                                                                () => {
+                                                                    return setSelectedPlanId(p._id);
+                                                                }}
+                                                        >
+                                                            <div className="membership-plan-top">
+                                                                <div>
+                                                                    <div className="membership-plan-name">{p.planName || p.name || 'Membership Plan'}</div>
+                                                                    <div className="membership-plan-sub">{PLAN_TYPE_LABEL[p.type] || p.type}</div>
                                                                 </div>
-                                                                <div className="col-12 col-md-3">
-                                                                    <label className="form-label" style={{ color: '#fff' }}>WhatsApp Number (optional)</label>
-                                                                    <input
-                                                                        className="form-control form-control-sm"
-                                                                        value={fm.phone}
-                                                                        onChange={/**
-                                                                         * Update this family member’s WhatsApp number (optional).
-                                                                         */
-                                                                        e => {
-                                                                            const next = [...familyMembers]
-                                                                            next[idx] = { ...next[idx], phone: e.target.value }
-                                                                            setFamilyMembers(next)
-                                                                        }}
-                                                                    />
-                                                                </div>
-                                                                <div className="col-6 col-md-2">
-                                                                    <label className="form-label" style={{ color: '#fff' }}>Age</label>
-                                                                    <input
-                                                                        type="number"
-                                                                        className="form-control form-control-sm"
-                                                                        value={fm.age}
-                                                                        onChange={/**
-                                                                         * Update this family member’s age.
-                                                                         */
-                                                                        e => {
-                                                                            const next = [...familyMembers]
-                                                                            next[idx] = { ...next[idx], age: e.target.value }
-                                                                            setFamilyMembers(next)
-                                                                        }}
-                                                                    />
-                                                                </div>
-                                                                <div className="col-6 col-md-2">
-                                                                    <label className="form-label" style={{ color: '#fff' }}>Gender</label>
-                                                                    <select
-                                                                        className="form-select form-select-sm"
-                                                                        value={fm.gender}
-                                                                        onChange={/**
-                                                                         * Update this family member’s gender.
-                                                                         */
-                                                                        e => {
-                                                                            const next = [...familyMembers]
-                                                                            next[idx] = { ...next[idx], gender: e.target.value }
-                                                                            setFamilyMembers(next)
-                                                                        }}
-                                                                    >
-                                                                        <option value="male">Male</option>
-                                                                        <option value="female">Female</option>
-                                                                        <option value="other">Other</option>
-                                                                    </select>
-                                                                </div>
-                                                                <div className="col-12 col-md-1 d-flex justify-content-end">
-                                                                    <button
-                                                                        type="button"
-                                                                        className="btn btn-outline-danger btn-sm"
-                                                                        onClick={/**
-                                                                         * Remove this family member row.
-                                                                         */
-                                                                        () => {
-                                                                            return setFamilyMembers(/**
-                                                                             * Filter out the index being removed.
-                                                                             */
-                                                                            prev => {
-                                                                                return prev.filter(/**
-                                                                                 * Keep all rows except the one being removed.
-                                                                                 */
-                                                                                (_, i) => {
-                                                                                    return i !== idx;
-                                                                                });
-                                                                            });
-                                                                        }}
-                                                                        disabled={familyMembers.length <= 1}
-                                                                    >
-                                                                        Remove
-                                                                    </button>
-                                                                </div>
+                                                                <div className="membership-plan-price">{planCardPrice(p)}</div>
                                                             </div>
-                                                        </div>
+                                                        </button>
                                                     );
                                                 })}
-											</div>
-										</div>
-									) : null}
+                                        </div>
+                                    ) : null}
 
-									{selectedPlan?.categoryRequired ? (
-										<div className="mt-3" style={{ maxWidth: 360 }}>
-											<label className="form-label" style={{ color: '#fff' }}>Category</label>
-											<select
-												className="form-select form-select-sm"
-												value={selection.category}
-												onChange={/**
+                                    <div className="d-flex justify-content-end mt-3">
+                                        <button
+                                            className="btn btn-success btn-sm"
+                                            onClick={/**
+                                                 * Move to the details step.
+                                             */
+                                                () => {
+                                                    setError('')
+                                                    setStep(STEP.DETAILS)
+                                                }}
+                                            disabled={!selectedPlan}
+                                        >
+                                            Continue
+                                        </button>
+                                    </div>
+                                </div>
+                            ) : null}
+
+                            {step === STEP.DETAILS ? (
+                                <div className="mt-3">
+                                    <div style={{ color: '#fff', fontWeight: 900, marginBottom: 8 }}>Details</div>
+
+                                    <div className="row g-2" style={{ marginBottom: 10 }}>
+                                        <div className="col-12 col-md-4">
+                                            <label className="form-label" style={{ color: '#fff' }}>Discount Amount (₹)</label>
+                                            <input
+                                                type="number"
+                                                min={0}
+                                                step="1"
+                                                className="form-control form-control-sm"
+                                                placeholder="0"
+                                                value={discountAmt}
+                                                onChange={e => setDiscountAmt(e.target.value)}
+                                            />
+                                            <div style={{ color: 'rgba(255,255,255,0.65)', fontSize: 12, marginTop: 6 }}>
+                                                Applied only for offline registration.
+                                            </div>
+                                        </div>
+
+                                        <div className="col-12 col-md-4">
+                                            <label className="form-label" style={{ color: '#fff' }}>Payment Method</label>
+                                            <select
+                                                className="form-select form-select-sm"
+                                                value={paymentMethod}
+                                                onChange={e => setPaymentMethod(e.target.value)}
+                                            >
+                                                {Object.keys(OFFLINE_PAYMENT_METHOD_LABEL).map(k => (
+                                                    <option key={k} value={k}>
+                                                        {OFFLINE_PAYMENT_METHOD_LABEL[k]}
+                                                    </option>
+                                                ))}
+                                            </select>
+                                            <div style={{ color: 'rgba(255,255,255,0.65)', fontSize: 12, marginTop: 6 }}>
+                                                Shown in Members list for tracking.
+                                            </div>
+                                        </div>
+                                    </div>
+
+                                    {/* ── Membership Date Overrides ── */}
+                                    <div style={{
+                                        background: 'rgba(56,189,248,0.07)',
+                                        border: '1px solid rgba(56,189,248,0.25)',
+                                        borderRadius: 10,
+                                        padding: '14px 16px',
+                                        marginBottom: 14,
+                                    }}>
+                                        <div style={{ color: '#38bdf8', fontWeight: 700, fontSize: 13, marginBottom: 10, display: 'flex', alignItems: 'center', gap: 6 }}>
+                                            📅 Membership Dates
+                                            <span style={{ color: 'rgba(255,255,255,0.45)', fontWeight: 400, fontSize: 11 }}>
+                                                — pre-filled automatically · edit to add existing members
+                                            </span>
+                                        </div>
+                                        <div className="row g-2">
+                                            <div className="col-12 col-md-5">
+                                                <label className="form-label" style={{ color: '#fff', fontSize: 13 }}>Join Date</label>
+                                                <input
+                                                    type="date"
+                                                    className="form-control form-control-sm"
+                                                    value={joinDate}
+                                                    onChange={e => {
+                                                        setJoinDate(e.target.value)
+                                                        // if expiry was manually edited, keep it; otherwise let effect recalculate
+                                                    }}
+                                                    style={{ background: 'rgba(255,255,255,0.08)', color: '#fff', border: '1px solid rgba(255,255,255,0.2)', colorScheme: 'dark' }}
+                                                />
+                                            </div>
+                                            <div className="col-12 col-md-5">
+                                                <label className="form-label" style={{ color: '#fff', fontSize: 13 }}>
+                                                    Expiry Date
+                                                    {expiryManuallyEdited && (
+                                                        <span
+                                                            onClick={() => setExpiryManuallyEdited(false)}
+                                                            style={{ marginLeft: 8, fontSize: 10, color: '#f87171', cursor: 'pointer', textDecoration: 'underline' }}
+                                                        >
+                                                            (manual · click to auto-reset)
+                                                        </span>
+                                                    )}
+                                                </label>
+                                                <input
+                                                    type="date"
+                                                    className="form-control form-control-sm"
+                                                    value={expiryDate}
+                                                    onChange={e => {
+                                                        setExpiryDate(e.target.value)
+                                                        setExpiryManuallyEdited(true)
+                                                    }}
+                                                    style={{ background: 'rgba(255,255,255,0.08)', color: '#fff', border: `1px solid ${expiryManuallyEdited ? 'rgba(248,113,113,0.5)' : 'rgba(255,255,255,0.2)'}`, colorScheme: 'dark' }}
+                                                />
+                                            </div>
+                                            <div className="col-12" style={{ color: 'rgba(255,255,255,0.5)', fontSize: 11, marginTop: 2 }}>
+                                                {selectedPlan?.durationInDays
+                                                    ? `Plan duration: ${selectedPlan.durationInDays} days · Change Join Date to auto-update Expiry`
+                                                    : 'Set dates manually for this plan type'}
+                                            </div>
+                                        </div>
+                                    </div>
+
+                                    {selectedPlan?.type === 'family' ? (
+                                        <div className="row g-2">
+                                            <div className="col-12 col-md-6">
+                                                <label className="form-label" style={{ color: '#fff' }}>Contact Name</label>
+                                                <input
+                                                    className="form-control form-control-sm"
+                                                    value={member.name}
+                                                    onChange={/**
+                                                     * Update contact name for the family plan.
+                                                     */
+                                                        e => {
+                                                            return setMember({ ...member, name: e.target.value });
+                                                        }}
+                                                />
+                                            </div>
+                                            <div className="col-12 col-md-6">
+                                                <label className="form-label" style={{ color: '#fff' }}>Contact WhatsApp Number</label>
+                                                <input
+                                                    className="form-control form-control-sm"
+                                                    value={member.phone}
+                                                    onChange={/**
+                                                     * Update contact WhatsApp number for the family plan.
+                                                     */
+                                                        e => {
+                                                            return setMember({ ...member, phone: e.target.value });
+                                                        }}
+                                                />
+                                            </div>
+                                        </div>
+                                    ) : (
+                                        <div className="row g-2">
+                                            <div className="col-12 col-md-6">
+                                                <label className="form-label" style={{ color: '#fff' }}>Name</label>
+                                                <input className="form-control form-control-sm" value={member.name} onChange={/**
+                                                     * Update member name.
+                                                 */
+                                                    e => {
+                                                        return setMember({ ...member, name: e.target.value });
+                                                    }} />
+                                            </div>
+                                            <div className="col-12 col-md-6">
+                                                <label className="form-label" style={{ color: '#fff' }}>WhatsApp Number</label>
+                                                <input className="form-control form-control-sm" value={member.phone} onChange={/**
+                                                     * Update member WhatsApp number.
+                                                 */
+                                                    e => {
+                                                        return setMember({ ...member, phone: e.target.value });
+                                                    }} />
+                                            </div>
+                                        </div>
+                                    )}
+
+                                    {selectedPlan?.type === 'family' ? (
+                                        <div className="mt-3">
+                                            <div className="d-flex align-items-center justify-content-between">
+                                                <div style={{ color: '#fff', fontWeight: 900 }}>Family Members</div>
+                                                <button
+                                                    type="button"
+                                                    className="btn btn-outline-light btn-sm"
+                                                    onClick={/**
+                                                     * Add an additional family member row.
+                                                     */
+                                                        () => {
+                                                            return setFamilyMembers(/**
+                                                         * Append a blank member template.
+                                                         */
+                                                                prev => {
+                                                                    return [...prev, emptyFamilyMember];
+                                                                });
+                                                        }}
+                                                >
+                                                    Add Member
+                                                </button>
+                                            </div>
+
+                                            <div className="mt-2" style={{ display: 'grid', gap: 10 }}>
+                                                {familyMembers.map(/**
+														 * Render each family member input block.
+														 */
+                                                    (fm, idx) => {
+                                                        return (
+                                                            <div key={idx} className="p-2" style={{ borderRadius: 12, border: '1px solid rgba(255,255,255,0.14)', background: 'rgba(255,255,255,0.05)' }}>
+                                                                <div className="row g-2 align-items-end">
+                                                                    <div className="col-12 col-md-4">
+                                                                        <label className="form-label" style={{ color: '#fff' }}>Name</label>
+                                                                        <input
+                                                                            className="form-control form-control-sm"
+                                                                            value={fm.name}
+                                                                            onChange={/**
+                                                                         * Update this family member’s name.
+                                                                         */
+                                                                                e => {
+                                                                                    const next = [...familyMembers]
+                                                                                    next[idx] = { ...next[idx], name: e.target.value }
+                                                                                    setFamilyMembers(next)
+                                                                                }}
+                                                                        />
+                                                                    </div>
+                                                                    <div className="col-12 col-md-3">
+                                                                        <label className="form-label" style={{ color: '#fff' }}>WhatsApp Number (optional)</label>
+                                                                        <input
+                                                                            className="form-control form-control-sm"
+                                                                            value={fm.phone}
+                                                                            onChange={/**
+                                                                         * Update this family member’s WhatsApp number (optional).
+                                                                         */
+                                                                                e => {
+                                                                                    const next = [...familyMembers]
+                                                                                    next[idx] = { ...next[idx], phone: e.target.value }
+                                                                                    setFamilyMembers(next)
+                                                                                }}
+                                                                        />
+                                                                    </div>
+                                                                    <div className="col-6 col-md-2">
+                                                                        <label className="form-label" style={{ color: '#fff' }}>Age</label>
+                                                                        <input
+                                                                            type="number"
+                                                                            className="form-control form-control-sm"
+                                                                            value={fm.age}
+                                                                            onChange={/**
+                                                                         * Update this family member’s age.
+                                                                         */
+                                                                                e => {
+                                                                                    const next = [...familyMembers]
+                                                                                    next[idx] = { ...next[idx], age: e.target.value }
+                                                                                    setFamilyMembers(next)
+                                                                                }}
+                                                                        />
+                                                                    </div>
+                                                                    <div className="col-6 col-md-2">
+                                                                        <label className="form-label" style={{ color: '#fff' }}>Gender</label>
+                                                                        <select
+                                                                            className="form-select form-select-sm"
+                                                                            value={fm.gender}
+                                                                            onChange={/**
+                                                                         * Update this family member’s gender.
+                                                                         */
+                                                                                e => {
+                                                                                    const next = [...familyMembers]
+                                                                                    next[idx] = { ...next[idx], gender: e.target.value }
+                                                                                    setFamilyMembers(next)
+                                                                                }}
+                                                                        >
+                                                                            <option value="male">Male</option>
+                                                                            <option value="female">Female</option>
+                                                                            <option value="other">Other</option>
+                                                                        </select>
+                                                                    </div>
+                                                                    <div className="col-12 col-md-1 d-flex justify-content-end">
+                                                                        <button
+                                                                            type="button"
+                                                                            className="btn btn-outline-danger btn-sm"
+                                                                            onClick={/**
+                                                                         * Remove this family member row.
+                                                                         */
+                                                                                () => {
+                                                                                    return setFamilyMembers(/**
+                                                                             * Filter out the index being removed.
+                                                                             */
+                                                                                        prev => {
+                                                                                            return prev.filter(/**
+                                                                                 * Keep all rows except the one being removed.
+                                                                                 */
+                                                                                                (_, i) => {
+                                                                                                    return i !== idx;
+                                                                                                });
+                                                                                        });
+                                                                                }}
+                                                                            disabled={familyMembers.length <= 1}
+                                                                        >
+                                                                            Remove
+                                                                        </button>
+                                                                    </div>
+                                                                </div>
+                                                            </div>
+                                                        );
+                                                    })}
+                                            </div>
+                                        </div>
+                                    ) : null}
+
+                                    {selectedPlan?.categoryRequired ? (
+                                        <div className="mt-3" style={{ maxWidth: 360 }}>
+                                            <label className="form-label" style={{ color: '#fff' }}>Category</label>
+                                            <select
+                                                className="form-select form-select-sm"
+                                                value={selection.category}
+                                                onChange={/**
                                                  * Update selected category for category-priced plans.
                                                  */
-                                                e => {
-                                                    return setSelection({ ...selection, category: e.target.value });
-                                                }}
-											>
-												<option value="infant">{CATEGORY_LABEL.infant}</option>
-												<option value="kids">{CATEGORY_LABEL.kids}</option>
-												<option value="adult">{CATEGORY_LABEL.adult}</option>
-											</select>
-										</div>
-									) : null}
+                                                    e => {
+                                                        return setSelection({ ...selection, category: e.target.value });
+                                                    }}
+                                            >
+                                                <option value="infant">{CATEGORY_LABEL.infant}</option>
+                                                <option value="kids">{CATEGORY_LABEL.kids}</option>
+                                                <option value="adult">{CATEGORY_LABEL.adult}</option>
+                                            </select>
+                                        </div>
+                                    ) : null}
 
-									{selectedPlan?.type === 'public' ? (
-										<div className="mt-3">
-											<div className="row g-2" style={{ maxWidth: 640 }}>
-												<div className="col-6">
-													<label className="form-label" style={{ color: '#fff' }}>Date</label>
-													<input
-														type="date"
-														className="form-control form-control-sm"
-														value={selection.publicSlot.date}
-														onChange={/**
+                                    {selectedPlan?.type === 'public' ? (
+                                        <div className="mt-3">
+                                            <div className="row g-2" style={{ maxWidth: 640 }}>
+                                                <div className="col-6">
+                                                    <label className="form-label" style={{ color: '#fff' }}>Date</label>
+                                                    <input
+                                                        type="date"
+                                                        className="form-control form-control-sm"
+                                                        value={selection.publicSlot.date}
+                                                        onChange={/**
                                                                  * Set the session date for a public batch (per-session) plan.
                                                          */
-                                                        e => {
-                                                            return setSelection({ ...selection, publicSlot: { ...selection.publicSlot, date: e.target.value } });
-                                                        }}
-													/>
-												</div>
-												<div className="col-6">
-													<label className="form-label" style={{ color: '#fff' }}>People</label>
-													<input
-														type="number"
-														min={1}
-														className="form-control form-control-sm"
-														value={selection.quantity}
-														onChange={/**
+                                                            e => {
+                                                                return setSelection({ ...selection, publicSlot: { ...selection.publicSlot, date: e.target.value } });
+                                                            }}
+                                                    />
+                                                </div>
+                                                <div className="col-6">
+                                                    <label className="form-label" style={{ color: '#fff' }}>People</label>
+                                                    <input
+                                                        type="number"
+                                                        min={1}
+                                                        className="form-control form-control-sm"
+                                                        value={selection.quantity}
+                                                        onChange={/**
                                                                  * Set headcount for public batch (charged per person).
                                                          */
-                                                        e => {
-                                                            return setSelection({ ...selection, quantity: e.target.value });
-                                                        }}
-													/>
-												</div>
-												<div className="col-6">
-													<label className="form-label" style={{ color: '#fff' }}>Start Time</label>
-													<input
-														type="time"
-														className="form-control form-control-sm"
-														value={selection.publicSlot.startTime}
-														onChange={/**
+                                                            e => {
+                                                                return setSelection({ ...selection, quantity: e.target.value });
+                                                            }}
+                                                    />
+                                                </div>
+                                                <div className="col-6">
+                                                    <label className="form-label" style={{ color: '#fff' }}>Start Time</label>
+                                                    <input
+                                                        type="time"
+                                                        className="form-control form-control-sm"
+                                                        value={selection.publicSlot.startTime}
+                                                        onChange={/**
                                                                  * Set the session start time.
                                                          */
-                                                        e => {
-                                                            return setSelection({ ...selection, publicSlot: { ...selection.publicSlot, startTime: e.target.value } });
-                                                        }}
-													/>
-												</div>
-												<div className="col-6">
-													<label className="form-label" style={{ color: '#fff' }}>End Time (optional)</label>
-													<input
-														type="time"
-														className="form-control form-control-sm"
-														value={selection.publicSlot.endTime}
-														onChange={/**
+                                                            e => {
+                                                                return setSelection({ ...selection, publicSlot: { ...selection.publicSlot, startTime: e.target.value } });
+                                                            }}
+                                                    />
+                                                </div>
+                                                <div className="col-6">
+                                                    <label className="form-label" style={{ color: '#fff' }}>End Time (optional)</label>
+                                                    <input
+                                                        type="time"
+                                                        className="form-control form-control-sm"
+                                                        value={selection.publicSlot.endTime}
+                                                        onChange={/**
                                                                  * Optional session end time.
                                                          */
-                                                        e => {
-                                                            return setSelection({ ...selection, publicSlot: { ...selection.publicSlot, endTime: e.target.value } });
-                                                        }}
-													/>
-												</div>
-											</div>
-										</div>
-									) : null}
+                                                            e => {
+                                                                return setSelection({ ...selection, publicSlot: { ...selection.publicSlot, endTime: e.target.value } });
+                                                            }}
+                                                    />
+                                                </div>
+                                            </div>
+                                        </div>
+                                    ) : null}
 
-									<div className="d-flex justify-content-between mt-4">
-										<button className="btn btn-outline-light btn-sm" onClick={/**
-                                             * Go back to plan selection.
-                                         */
-                                        () => {
-                                            return setStep(STEP.PLAN);
-                                        }} disabled={busy}>
-											Back
-										</button>
-										<button className="btn btn-success btn-sm" onClick={submitOffline} disabled={busy}>
-											{busy ? 'Creating…' : 'Create Membership'}
-										</button>
-									</div>
-								</div>
-							) : null}
-
-							{step === STEP.DONE ? (
-								<div className="mt-3">
-									<div style={{ color: '#00FFD4', fontWeight: 900, fontSize: 18 }}>Created successfully</div>
-									<div className="mt-2" style={{ display: 'grid', gap: 8 }}>
-										<div
-											className="p-2"
-											style={{ borderRadius: 12, border: '1px solid rgba(255,255,255,0.14)', background: 'rgba(255,255,255,0.05)' }}
-										>
-											<div style={{ color: 'rgba(255,255,255,0.75)', fontSize: 12 }}>Total collected</div>
-											<div style={{ color: '#fff', fontWeight: 900, fontSize: 18 }}>
-												{formatInr(result?.payment?.amount ?? computedTotal)}
-											</div>
-											<div style={{ color: 'rgba(255,255,255,0.7)', fontSize: 12, marginTop: 4 }}>
-												Payment type: {paymentTypeLabel(result?.payment?.provider || 'cash')}
-											</div>
-											{result?.payment?.collectedBy ? (
-												<div style={{ color: 'rgba(255,255,255,0.7)', fontSize: 12, marginTop: 4 }}>
-													Collected by: {result.payment.collectedBy}
-												</div>
-											) : null}
-										</div>
-									</div>
-									<div style={{ color: 'rgba(255,255,255,0.75)', marginTop: 6 }}>
-										Download ID cards for each member.
-									</div>
-
-									<div className="mt-3" style={{ display: 'grid', gap: 10 }}>
-										{(result?.members || []).map(/**
-                                             * Render the created members and allow downloading ID cards.
-                                         */
-                                        m => {
-                                            return (
-                                                <div
-                                                    key={m._id}
-                                                    className="p-2"
-                                                    style={{ borderRadius: 12, border: '1px solid rgba(255,255,255,0.14)', background: 'rgba(255,255,255,0.06)' }}
-                                                >
-                                                    <div className="d-flex align-items-center justify-content-between gap-2 flex-wrap">
-                                                        <div>
-                                                            <div style={{ color: '#fff', fontWeight: 900 }}>{m.name}</div>
-                                                            <div style={{ color: 'rgba(255,255,255,0.70)', fontSize: 12 }}>ID: {m._id}</div>
-                                                        </div>
-                                                        <button
-                                                            className="btn btn-outline-light btn-sm"
-                                                            onClick={/**
-                                                             * Download the member ID card (includes QR used for attendance scans).
-                                                             */
-                                                            () => {
-                                                                return downloadMemberIdCard({
-                                                                    name: m.name,
-                                                                    memberId: m._id,
-                                                                    qrDataUrl: m.qrCode,
-                                                                    planName: result?.plan?.planName || selectedPlan?.planName || 'Membership',
-                                                                        joinDate: m.joinDate,
-                                                                    expiryDate: m.expiryDate,
-                                                                });
-                                                            }
-                                                            }
-                                                        >
-                                                            Download ID Card
-                                                        </button>
+                                    {/* ── Partial Payment Input ── */}
+                                    {computedTotal != null && (
+                                        <div className="mt-3 p-3" style={{ borderRadius: 12, border: '1px solid rgba(255,215,0,0.35)', background: 'rgba(255,215,0,0.07)' }}>
+                                            <div style={{ color: '#FFD700', fontWeight: 700, marginBottom: 8, fontSize: 14 }}>
+                                                💰 Payment Collection
+                                            </div>
+                                            <div className="row g-2">
+                                                <div className="col-12 col-md-6">
+                                                    <label className="form-label" style={{ color: '#fff', fontSize: 13 }}>
+                                                        Total Payable
+                                                    </label>
+                                                    <div style={{ color: '#00FFD4', fontWeight: 900, fontSize: 18 }}>
+                                                        {formatInr(computedTotal)}
                                                     </div>
                                                 </div>
-                                            );
-                                        })}
-									</div>
+                                                <div className="col-12 col-md-6">
+                                                    <label className="form-label" style={{ color: '#fff', fontSize: 13 }}>
+                                                        Amount Paid Now <span style={{ color: 'rgba(255,255,255,0.5)', fontWeight: 400 }}>(leave blank = full amount)</span>
+                                                    </label>
+                                                    <input
+                                                        type="number"
+                                                        min={0}
+                                                        max={computedTotal}
+                                                        step="0.01"
+                                                        className="form-control form-control-sm"
+                                                        placeholder={`Full: ₹${computedTotal}`}
+                                                        value={paidAmountInput}
+                                                        onChange={e => setPaidAmountInput(e.target.value)}
+                                                    />
+                                                </div>
+                                            </div>
+                                            {/* Live pending preview */}
+                                            {paidAmountInput !== '' && !isNaN(Number(paidAmountInput)) && Number(paidAmountInput) < computedTotal && (
+                                                <div className="mt-2" style={{ padding: '8px 12px', borderRadius: 8, background: 'rgba(255,107,107,0.15)', border: '1px solid rgba(255,107,107,0.4)' }}>
+                                                    <span style={{ color: '#FF6B6B', fontWeight: 700 }}>⚠️ Pending Amount: </span>
+                                                    <span style={{ color: '#fff', fontWeight: 900 }}>{formatInr(Math.max(0, computedTotal - Number(paidAmountInput)))}</span>
+                                                    <span style={{ color: 'rgba(255,255,255,0.6)', fontSize: 12, marginLeft: 8 }}>will be tracked as outstanding balance</span>
+                                                </div>
+                                            )}
+                                        </div>
+                                    )}
 
-									<div className="d-flex justify-content-end mt-4">
-										<button className="btn btn-success btn-sm" onClick={resetAll}>
-											Create Another
-										</button>
-									</div>
-								</div>
-							) : null}
-						</div>
-					</div>
+                                    <div className="d-flex justify-content-between mt-4">
+                                        <button className="btn btn-outline-light btn-sm" onClick={() => setStep(STEP.PLAN)} disabled={busy}>
+                                            Back
+                                        </button>
+                                        <button className="btn btn-success btn-sm" onClick={submitOffline} disabled={busy}>
+                                            {busy ? 'Creating…' : 'Create Membership'}
+                                        </button>
+                                    </div>
+                                </div>
+                            ) : null}
 
-					<div className="col-12 col-lg-4">
-						<div className="p-3" style={{ background: 'rgba(15, 25, 50, 0.75)', border: '1px solid rgba(0, 255, 200, 0.25)', borderRadius: 16 }}>
-							<div style={{ color: '#00FFD4', fontWeight: 900 }}>Current selection</div>
-							<div style={{ color: 'rgba(255,255,255,0.85)', marginTop: 10, fontWeight: 800 }}>
-								{selectedPlan ? `${selectedPlan.planName || selectedPlan.name} (${PLAN_TYPE_LABEL[selectedPlan.type] || selectedPlan.type})` : '—'}
-							</div>
-							<div style={{ color: 'rgba(255,255,255,0.7)', marginTop: 8, fontSize: 13 }}>
-								Offline cash registrations do not add Razorpay fee/GST.
-							</div>
+                            {step === STEP.DONE ? (
+                                <div className="mt-3">
+                                    <div style={{ color: '#00FFD4', fontWeight: 900, fontSize: 18 }}>Created successfully</div>
+                                    <div className="mt-2" style={{ display: 'grid', gap: 8 }}>
+                                        <div
+                                            className="p-2"
+                                            style={{ borderRadius: 12, border: '1px solid rgba(255,255,255,0.14)', background: 'rgba(255,255,255,0.05)' }}
+                                        >
+                                            <div style={{ color: 'rgba(255,255,255,0.75)', fontSize: 12 }}>Total Payable</div>
+                                            <div style={{ color: '#fff', fontWeight: 900, fontSize: 18 }}>
+                                                {formatInr(result?.payment?.pricing?.total ?? computedTotal)}
+                                            </div>
+                                            {/* Paid now */}
+                                            {result?.members?.[0]?.paidAmount != null && (
+                                                <div style={{ marginTop: 6, display: 'flex', gap: 16, flexWrap: 'wrap' }}>
+                                                    <div>
+                                                        <span style={{ color: 'rgba(255,255,255,0.6)', fontSize: 12 }}>Paid now: </span>
+                                                        <span style={{ color: '#00FFD4', fontWeight: 700 }}>{formatInr(result.members[0].paidAmount)}</span>
+                                                    </div>
+                                                    {result.members[0].pendingAmount > 0 && (
+                                                        <div>
+                                                            <span style={{ color: 'rgba(255,255,255,0.6)', fontSize: 12 }}>Pending: </span>
+                                                            <span style={{ color: '#FF6B6B', fontWeight: 700 }}>{formatInr(result.members[0].pendingAmount)}</span>
+                                                        </div>
+                                                    )}
+                                                </div>
+                                            )}
+                                            <div style={{ color: 'rgba(255,255,255,0.7)', fontSize: 12, marginTop: 4 }}>
+                                                Payment type: {paymentTypeLabel(result?.payment?.provider || 'cash')}
+                                            </div>
+                                            {result?.payment?.collectedBy ? (
+                                                <div style={{ color: 'rgba(255,255,255,0.7)', fontSize: 12, marginTop: 4 }}>
+                                                    Collected by: {result.payment.collectedBy}
+                                                </div>
+                                            ) : null}
+                                        </div>
+                                    </div>
+                                    <div style={{ color: 'rgba(255,255,255,0.75)', marginTop: 6 }}>
+                                        Download ID cards for each member.
+                                    </div>
 
-								<div style={{ height: 1, background: 'rgba(255,255,255,0.10)', margin: '14px 0' }} />
+                                    <div className="mt-3" style={{ display: 'grid', gap: 10 }}>
+                                        {(result?.members || []).map(/**
+                                             * Render the created members and allow downloading ID cards.
+                                         */
+                                            m => {
+                                                return (
+                                                    <div
+                                                        key={m._id}
+                                                        className="p-2"
+                                                        style={{ borderRadius: 12, border: '1px solid rgba(255,255,255,0.14)', background: 'rgba(255,255,255,0.06)' }}
+                                                    >
+                                                        <div className="d-flex align-items-center justify-content-between gap-2 flex-wrap">
+                                                            <div>
+                                                                <div style={{ color: '#fff', fontWeight: 900 }}>{m.name}</div>
+                                                                <div style={{ color: 'rgba(255,255,255,0.70)', fontSize: 12 }}>ID: {m._id}</div>
+                                                            </div>
+                                                            <div className="d-flex gap-2">
+                                                                <button
+                                                                    className="btn btn-outline-success btn-sm"
+                                                                    onClick={() => {
+                                                                        const url = `https://loginsportsacademy.com/member/id/${m._id}`;
+                                                                        const message = `Hello *${m.name.toUpperCase()}* \n\nWelcome to *Login Sports Academy*!  Thank you for registering with us.\n\nYour Official Digital Member ID Card is ready. \nPlease use the secure link below to view and download your ID card for attendance and entry:\n\n ${url}\n\nWe look forward to seeing you at the academy! \n\nRegards,\n*Team Login Sports Academy* `;
+                                                                        const whatsappUrl = `https://wa.me/91${m.phone}?text=${encodeURIComponent(message)}`;
+                                                                        window.open(whatsappUrl, '_blank');
+                                                                    }}
+                                                                >
+                                                                    Send via WhatsApp
+                                                                </button>
+                                                                <button
+                                                                    className="btn btn-outline-light btn-sm"
+                                                                    onClick={/**
+                                                                 * Download the member ID card (includes QR used for attendance scans).
+                                                                 */
+                                                                        () => {
+                                                                            return downloadMemberIdCard({
+                                                                                name: m.name,
+                                                                                phone: m.phone,
+                                                                                memberId: m._id,
+                                                                                qrDataUrl: m.qrCode,
+                                                                                planName: result?.plan?.planName || selectedPlan?.planName || 'Membership',
+                                                                                joinDate: m.joinDate,
+                                                                                expiryDate: m.expiryDate,
+                                                                            });
+                                                                        }
+                                                                    }
+                                                                >
+                                                                    Download Offline
+                                                                </button>
+                                                            </div>
+                                                        </div>
+                                                    </div>
+                                                );
+                                            })}
+                                    </div>
 
-								<div style={{ color: '#fff', fontWeight: 900, fontSize: 14 }}>Summary</div>
-								<div style={{ display: 'grid', gap: 8, marginTop: 10 }}>
-									{selectedPlan?.type === 'public' ? (
-										<div style={{ color: 'rgba(255,255,255,0.8)', fontSize: 13 }}>
-											People: <span style={{ color: '#fff', fontWeight: 800 }}>{peopleCount ?? '—'}</span>
-										</div>
-									) : null}
+                                    <div className="d-flex justify-content-end mt-4">
+                                        <button className="btn btn-success btn-sm" onClick={resetAll}>
+                                            Create Another
+                                        </button>
+                                    </div>
+                                </div>
+                            ) : null}
+                        </div>
+                    </div>
 
-									{selectedPlan?.categoryRequired ? (
-										<div style={{ color: 'rgba(255,255,255,0.8)', fontSize: 13 }}>
-											Category: <span style={{ color: '#fff', fontWeight: 800 }}>{CATEGORY_LABEL[selection.category] || selection.category}</span>
-										</div>
-									) : null}
+                    <div className="col-12 col-lg-4">
+                        <div className="p-3" style={{ background: 'rgba(15, 25, 50, 0.75)', border: '1px solid rgba(0, 255, 200, 0.25)', borderRadius: 16 }}>
+                            <div style={{ color: '#00FFD4', fontWeight: 900 }}>Current selection</div>
+                            <div style={{ color: 'rgba(255,255,255,0.85)', marginTop: 10, fontWeight: 800 }}>
+                                {selectedPlan ? `${selectedPlan.planName || selectedPlan.name} (${PLAN_TYPE_LABEL[selectedPlan.type] || selectedPlan.type})` : '—'}
+                            </div>
+                            <div style={{ color: 'rgba(255,255,255,0.7)', marginTop: 8, fontSize: 13 }}>
+                                Offline cash registrations do not add Razorpay fee/GST.
+                            </div>
 
-									{selectedPlan?.type === 'yearly' && (selectedPlan.addOns?.coachingAddOnMonthly || 0) > 0 ? (
-										<div style={{ color: 'rgba(255,255,255,0.8)', fontSize: 13 }}>
-											Coaching add-on: <span style={{ color: '#fff', fontWeight: 800 }}>{selection.coachingAddOn ? 'Yes' : 'No'}</span>
-										</div>
-									) : null}
+                            <div style={{ height: 1, background: 'rgba(255,255,255,0.10)', margin: '14px 0' }} />
 
-									{computedSubtotal != null ? (
-										<div style={{ display: 'flex', alignItems: 'baseline', justifyContent: 'space-between', gap: 12 }}>
-											<div style={{ color: 'rgba(255,255,255,0.7)', fontSize: 13 }}>Amount</div>
-											<div style={{ color: '#fff', fontWeight: 900 }}>{formatInr(computedSubtotal)}</div>
-										</div>
-									) : (
-										<div style={{ color: 'rgba(255,255,255,0.65)', fontSize: 12 }}>
-											Select valid options to calculate amount.
-										</div>
-									)}
+                            <div style={{ color: '#fff', fontWeight: 900, fontSize: 14 }}>Summary</div>
+                            <div style={{ display: 'grid', gap: 8, marginTop: 10 }}>
+                                {selectedPlan?.type === 'public' ? (
+                                    <div style={{ color: 'rgba(255,255,255,0.8)', fontSize: 13 }}>
+                                        People: <span style={{ color: '#fff', fontWeight: 800 }}>{peopleCount ?? '—'}</span>
+                                    </div>
+                                ) : null}
 
-									<div style={{ display: 'flex', alignItems: 'baseline', justifyContent: 'space-between', gap: 12 }}>
-										<div style={{ color: 'rgba(255,255,255,0.7)', fontSize: 13 }}>Total to collect</div>
-										<div style={{ color: '#00FFD4', fontWeight: 900, fontSize: 18 }}>{formatInr(computedTotal)}</div>
-									</div>
-								</div>
-						</div>
-					</div>
-				</div>
-			</div>
-        </div>
+                                {selectedPlan?.categoryRequired ? (
+                                    <div style={{ color: 'rgba(255,255,255,0.8)', fontSize: 13 }}>
+                                        Category: <span style={{ color: '#fff', fontWeight: 800 }}>{CATEGORY_LABEL[selection.category] || selection.category}</span>
+                                    </div>
+                                ) : null}
+
+                                {selectedPlan?.type === 'yearly' && (selectedPlan.addOns?.coachingAddOnMonthly || 0) > 0 ? (
+                                    <div style={{ color: 'rgba(255,255,255,0.8)', fontSize: 13 }}>
+                                        Coaching add-on: <span style={{ color: '#fff', fontWeight: 800 }}>{selection.coachingAddOn ? 'Yes' : 'No'}</span>
+                                    </div>
+                                ) : null}
+
+                                {computedSubtotal != null ? (
+                                    <div style={{ display: 'flex', alignItems: 'baseline', justifyContent: 'space-between', gap: 12 }}>
+                                        <div style={{ color: 'rgba(255,255,255,0.7)', fontSize: 13 }}>Amount</div>
+                                        <div style={{ color: '#fff', fontWeight: 900 }}>{formatInr(computedSubtotal)}</div>
+                                    </div>
+                                ) : (
+                                    <div style={{ color: 'rgba(255,255,255,0.65)', fontSize: 12 }}>
+                                        Select valid options to calculate amount.
+                                    </div>
+                                )}
+
+                                {computedDiscountAmount != null && Number(computedDiscountAmount) > 0 && parseDiscountAmt(discountAmt).ok ? (
+                                    <div style={{ display: 'flex', alignItems: 'baseline', justifyContent: 'space-between', gap: 12 }}>
+                                        <div style={{ color: 'rgba(255,255,255,0.7)', fontSize: 13 }}>
+                                            Discount Deduction
+                                        </div>
+                                        <div style={{ color: '#fff', fontWeight: 900 }}>- {formatInr(computedDiscountAmount)}</div>
+                                    </div>
+                                ) : null}
+
+                                <div style={{ display: 'flex', alignItems: 'baseline', justifyContent: 'space-between', gap: 12 }}>
+                                    <div style={{ color: 'rgba(255,255,255,0.7)', fontSize: 13 }}>Total to collect</div>
+                                    <div style={{ color: '#00FFD4', fontWeight: 900, fontSize: 18 }}>{formatInr(computedTotal)}</div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                </div>
+        </AdminLayout>
     );
 };
 

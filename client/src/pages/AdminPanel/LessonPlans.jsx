@@ -6,8 +6,7 @@
 import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import { isAdminAuthenticated } from "../../utils/adminAuth";
-import AdminNavbar from "../../components/adminPanel/AdminNavbar";
-import { BRAND } from "../../content/brand";
+import AdminLayout from "../../components/adminPanel/AdminLayout";
 import { FaDownload, FaEye, FaTimes } from "react-icons/fa";
 
 // Lesson plans page — lets admins view and download yearly swimming curriculum PDFs
@@ -24,24 +23,17 @@ const LessonPlans = () => {
 
   // Yearly Plans State
   const [yearlyPlans] = useState([
-    { id: 1, year: 2025-2026, title: "Annual Swimming Curriculum", pdfUrl: "/assets/lessonPlan/yearly plan.pdf", uploadDate: "2025-01-15" },
-    { id: 2, year: 2025-2026, title: "Level of Learning", pdfUrl: "/assets/lessonPlan/level of learning.pdf", uploadDate: "2025-06-20" },
+    { id: 1, year: "2025-2026", title: "Annual Swimming Curriculum", pdfUrl: "/assets/lessonPlan/yearly plan.pdf", uploadDate: "2025-01-15" },
+    { id: 2, year: "2025-2026", title: "Level of Learning", pdfUrl: "/assets/lessonPlan/level of learning.pdf", uploadDate: "2025-06-20" },
   ]);
   const [selectedYearlyPlan, setSelectedYearlyPlan] = useState(null);
 
   return (
-    <div
-      style={{
-        minHeight: "100vh",
-        background: "linear-gradient(135deg, #0a0e27 0%, #1a1f3a 50%, #0f1629 100%)",
-        fontFamily: "Poppins, system-ui",
-      }}
-    >
-      <AdminNavbar />
-      <div style={{ padding: "clamp(18px, 4vw, 40px)", maxWidth: "1400px", margin: "0 auto" }}>
+    <AdminLayout>
+      <div style={{ padding: "0 40px 60px 40px", maxWidth: "1400px", margin: "0 auto" }}>
         {/* Page Header */}
         <div style={{ marginBottom: "40px" }}>
-          <h1 style={{ color: "#00FFD4", fontSize: "clamp(1.6rem, 5vw, 2.2rem)", fontWeight: 900, marginBottom: "10px" }}>
+          <h1 style={{ color: "#00FFD4", fontSize: "2.2rem", fontWeight: 900, marginBottom: "10px" }}>
             📚 Lesson Plans Management
           </h1>
           <p style={{ color: "rgba(255, 255, 255, 0.6)", fontSize: "1rem" }}>
@@ -55,7 +47,7 @@ const LessonPlans = () => {
             <h2 style={{ color: "#00FFD4", fontSize: "1.8rem", margin: 0 }}>📅 Yearly Curriculum Plans</h2>
           </div>
 
-          <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(260px, 1fr))", gap: "20px", marginBottom: "30px" }}>
+          <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(300px, 1fr))", gap: "20px", marginBottom: "30px" }}>
             {yearlyPlans.map(
             // Render a card for each curriculum plan (annual plan, level of learning, etc.)
             plan => {
@@ -126,7 +118,7 @@ const LessonPlans = () => {
                     </button>
                     <a
                       href={plan.pdfUrl}
-                      download={`${(BRAND.shortName || BRAND.name).replace(/\s+/g, '_')}_${plan.year}_Plan.pdf`}
+                      download={`LSA_${plan.year}_Plan.pdf`}
                       style={{
                         flex: 1,
                         display: "flex",
@@ -270,7 +262,7 @@ const LessonPlans = () => {
           }
         }
       `}</style>
-    </div>
+    </AdminLayout>
   );
 };
 

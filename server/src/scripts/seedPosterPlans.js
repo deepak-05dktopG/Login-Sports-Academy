@@ -13,16 +13,6 @@ import MembershipPlan from '../models/MembershipPlan.js'
 
 const officialPlans = [
 	{
-		planName: 'Public Batch (Per Session)',
-		type: 'public',
-		categoryRequired: false,
-		durationInMinutes: 60,
-		basePrice: 150,
-		publicEntryWindow: { startTime: '10:00', endTime: '15:00' },
-		isRecurring: false,
-		isActive: true,
-	},
-	{
 		planName: 'Monthly Membership',
 		type: 'monthly',
 		categoryRequired: false,
@@ -125,7 +115,7 @@ const officialPlans = [
 	},
 ]
 
-// Connects to MongoDB and upserts all official Bluefins membership/coaching plans from the poster
+// Connects to MongoDB and upserts all official Login Sports Academy membership/coaching plans from the poster
 const main = async () => {
     await connectDB()
 
