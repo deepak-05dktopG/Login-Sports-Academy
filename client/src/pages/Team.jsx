@@ -13,8 +13,8 @@ const Team = () => {
 
   const swimmingTeam = {
     leadership: [
-      { name: "Mr. M. Dinesh", position: "_________", image: "/assets/Team/dinesh.png", eligibilities: [] },
-      { name: "Mr._________", position: "_______", image: "/assets/Team/leader2.jpeg", eligibilities: [] },
+      { name: "Mr. M. Dinesh", position: "Leader", image: "/assets/Team/dinesh.png", eligibilities: [] },
+      { name: "Mr. A. Ismail Sheriff", position: "Leader", image: "/assets/Team/leader2.jpeg", eligibilities: [] },
     ],
     coaches: [
       { name: "Mr. V. Vijeesh", position: "Coach", image: "/assets/Team/vijeesh.jpg", eligibilities: ["International Swimmer", "ASCA Level 3"] },

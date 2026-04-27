@@ -64,14 +64,14 @@ const AdminDashboard = () => {
       color: "#0099FF",
       count: "",
     },
-    {
-      title: "Lesson Plans",
-      description: "Manage yearly plans and learning levels",
-      icon: <FaBookmark />,
-      path: "/admin/lesson-plans",
-      color: "#00FFD4",
-      count: "",
-    },
+    // {
+    //   title: "Lesson Plans",
+    //   description: "Manage yearly plans and learning levels",
+    //   icon: <FaBookmark />,
+    //   path: "/admin/lesson-plans",
+    //   color: "#00FFD4",
+    //   count: "",
+    // },
     {
       title: "Members Feedback",
       description: "View and manage customer feedback",
