@@ -137,15 +137,16 @@ const Navbar = () => {
             <img 
               src="/assets/Logo.png" 
               alt="Login Sports Academy Logo" 
-              className=" logo-3d-animate"
+              className="logo-3d-animate"
               style={{ 
-                height: "60px", 
+                height: "30px", 
                 width: "auto", 
                 marginRight: "25px",
+                objectFit: "cover",
                 filter: isScrolled ? "none" : "drop-shadow(0 2px 8px rgba(0, 0, 0, 0.5))"
               }} 
             />
-            <div style={{ display: "flex", flexDirection: "column", lineHeight: 1.1 }}>
+            {/* <div style={{ display: "flex", flexDirection: "column", lineHeight: 1.1 }}>
               <span
                 className="main-navbar__brand-title"
                 style={{
@@ -173,7 +174,7 @@ const Navbar = () => {
               >
                 Sports Academy
               </span>
-            </div>
+            </div> */}
           </BsNavbar.Brand>
 
           {/* Mobile Toggle */}
@@ -326,18 +327,33 @@ const styles = `
       margin-top: 15px;
       padding-bottom: 20px;
     }
-  }
-  
   @keyframes logo3DFloat {
     0% { transform: perspective(800px) translateY(0px) rotateX(0deg) rotateY(0deg) scale(1.5); }
     50% { transform: perspective(800px) translateY(-4px) rotateX(4deg) rotateY(5deg) scale(1.55); }
     100% { transform: perspective(800px) translateY(0px) rotateX(0deg) rotateY(0deg) scale(1.5); }
   }
   
+  @keyframes logo3DFloatMobile {
+    0% { transform: perspective(800px) translateY(0px) rotateX(0deg) rotateY(0deg) scale(1.1); }
+    50% { transform: perspective(800px) translateY(-2px) rotateX(4deg) rotateY(5deg) scale(1.15); }
+    100% { transform: perspective(800px) translateY(0px) rotateX(0deg) rotateY(0deg) scale(1.1); }
+  }
+  
   .logo-3d-animate {
+    height: 60px;
+    width: auto;
+    margin-right: 25px;
     animation: logo3DFloat 5s ease-in-out infinite;
     transform-style: preserve-3d;
     will-change: transform;
+  }
+  
+  @media (max-width: 991px) {
+    .logo-3d-animate {
+      height: 45px;
+      margin-right: 15px;
+      animation: logo3DFloatMobile 5s ease-in-out infinite;
+    }
   }
 `;
 
