@@ -137,10 +137,11 @@ const Navbar = () => {
             <img 
               src="/assets/Logo.png" 
               alt="Login Sports Academy Logo" 
+              className=" logo-3d-animate"
               style={{ 
-                height: "45px", 
+                height: "60px", 
                 width: "auto", 
-                marginRight: "10px",
+                marginRight: "25px",
                 filter: isScrolled ? "none" : "drop-shadow(0 2px 8px rgba(0, 0, 0, 0.5))"
               }} 
             />
@@ -325,6 +326,18 @@ const styles = `
       margin-top: 15px;
       padding-bottom: 20px;
     }
+  }
+  
+  @keyframes logo3DFloat {
+    0% { transform: perspective(800px) translateY(0px) rotateX(0deg) rotateY(0deg) scale(1.5); }
+    50% { transform: perspective(800px) translateY(-4px) rotateX(4deg) rotateY(5deg) scale(1.55); }
+    100% { transform: perspective(800px) translateY(0px) rotateX(0deg) rotateY(0deg) scale(1.5); }
+  }
+  
+  .logo-3d-animate {
+    animation: logo3DFloat 5s ease-in-out infinite;
+    transform-style: preserve-3d;
+    will-change: transform;
   }
 `;
 
