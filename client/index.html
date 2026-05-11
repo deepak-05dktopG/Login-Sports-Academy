@@ -123,5 +123,256 @@
   <body>
     <div id="root"></div>
     <script type="module" src="/src/main.jsx"></script>
+    
+    <!-- n8n Chat Widget -->
+    <link href="https://cdn.jsdelivr.net/npm/@n8n/chat/dist/style.css" rel="stylesheet" />
+    <script type="module">
+      import { createChat } from 'https://cdn.jsdelivr.net/npm/@n8n/chat/dist/chat.bundle.es.js';
+
+      createChat({
+        webhookUrl: 'https://n8n-ddc.onrender.com/webhook/1fdf67da-5845-4efe-bc37-63cb87fa637b/chat',
+        mode: 'window',
+        chatInputKey: 'chatInput',
+        chatSessionKey: 'sessionId',
+        initialMessages: [
+          '🏊 Welcome to **Login Sports Academy**!',
+          'I\'m your personal academy assistant. I can help you with:\n\n• 🗓️ **Schedules** — Swimming & Badminton timings\n• 💰 **Pricing** — Membership & coaching plans\n• 📍 **Location** — How to find us in Salem\n• 🎓 **Programs** — Coaching details for all ages\n\nHow can I help you today?',
+        ],
+        i18n: {
+          en: {
+            title: '👩‍💼 Academy Assistant',
+            subtitle: 'Login Sports Academy · Salem',
+            footer: '',
+            getStarted: 'Start Chat',
+            inputPlaceholder: 'Ask anything about academy...',
+            closeButtonTooltip: 'Close Chat',
+          },
+        },
+      });
+
+      // Inject academy logo into chat header once it renders
+      const observer = new MutationObserver(() => {
+        const header = document.querySelector('.n8n-chat-window-header');
+        if (header && !header.querySelector('.lsa-chat-logo')) {
+          const logoWrapper = document.createElement('div');
+          logoWrapper.className = 'lsa-chat-logo';
+          logoWrapper.style.cssText = `
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            margin-bottom: 4px;
+          `;
+          const img = document.createElement('img');
+          img.src = '/assets/Logo.png';
+          img.alt = 'Login Sports Academy';
+          img.style.cssText = `
+            width: 40px;
+            height: 40px;
+            object-fit: contain;
+            border-radius: 10px;
+            background: rgba(255,255,255,0.08);
+            padding: 3px;
+            flex-shrink: 0;
+          `;
+          logoWrapper.appendChild(img);
+          header.insertBefore(logoWrapper, header.firstChild);
+        }
+      });
+      observer.observe(document.body, { childList: true, subtree: true });
+    </script>
+
+    <!-- n8n Chat Widget Theme Override — Official CSS Variables -->
+    <style>
+      :root {
+        /* ── Colors ── */
+        --chat--color--primary:             #FFB800;
+        --chat--color--primary-shade-50:    #e6a000;
+        --chat--color--primary--shade-100:  #cc8e00;
+        --chat--color--secondary:           #00D4FF;
+        --chat--color-secondary-shade-50:   #00b8e0;
+
+        --chat--color-white:                #ffffff;
+        --chat--color-light:                rgba(255,255,255,0.06);
+        --chat--color-light-shade-50:       rgba(255,255,255,0.10);
+        --chat--color-light-shade-100:      rgba(255,255,255,0.15);
+        --chat--color-medium:               rgba(255,255,255,0.35);
+        --chat--color-dark:                 #0a1628;
+        --chat--color-disabled:             rgba(255,255,255,0.25);
+        --chat--color-typing:               #00D4FF;
+
+        /* ── Base Layout ── */
+        --chat--spacing:            1rem;
+        --chat--border-radius:      1.5rem;
+        --chat--transition-duration: 0.2s;
+        --chat--font-family:        'Poppins', -apple-system, BlinkMacSystemFont, sans-serif;
+
+        /* ── Window ── */
+        --chat--window--width:         390px;
+        --chat--window--height:        600px;
+        --chat--window--bottom:        28px;
+        --chat--window--right:         28px;
+        --chat--window--z-index:       9999;
+        --chat--window--border:        1px solid rgba(0,212,255,0.25);
+        --chat--window--border-radius: 1.75rem;
+        --chat--window--margin-bottom: var(--chat--spacing);
+
+        /* ── Header ── */
+        --chat--header-height:           auto;
+        --chat--header--padding:         1.2rem 1.4rem;
+        --chat--header--background:      linear-gradient(135deg, #060c1a 0%, #0d1f3c 100%);
+        --chat--header--color:           #ffffff;
+        --chat--header--border-top:      none;
+        --chat--header--border-bottom:   2px solid rgba(255,184,0,0.35);
+        --chat--header--border-left:     none;
+        --chat--header--border-right:    none;
+        --chat--heading--font-size:      1.1rem;
+        --chat--subtitle--font-size:     0.78rem;
+        --chat--subtitle--line-height:   1.5;
+
+        /* ── Messages ── */
+        --chat--message--font-size:          0.88rem;
+        --chat--message--padding:            0.8rem 1rem;
+        --chat--message--border-radius:      1.25rem;
+        --chat--message-line-height:         1.65;
+        --chat--message--margin-bottom:      0.6rem;
+        --chat--message--bot--background:    rgba(0,212,255,0.07);
+        --chat--message--bot--color:         #ddeeff;
+        --chat--message--bot--border:        1px solid rgba(0,212,255,0.2);
+        --chat--message--user--background:   #00D4FF;
+        --chat--message--user--color:        #060c1a;
+        --chat--message--user--border:       none;
+        --chat--message--pre--background:    rgba(0,0,0,0.25);
+        --chat--messages-list--padding:      1rem 0.9rem;
+
+        /* ── Toggle / Launcher ── */
+        --chat--toggle--size:             64px;
+        --chat--toggle--width:            64px;
+        --chat--toggle--height:           64px;
+        --chat--toggle--border-radius:    50%;
+        --chat--toggle--background:       #FFB800;
+        --chat--toggle--hover--background:#e6a000;
+        --chat--toggle--active--background:#cc8e00;
+        --chat--toggle--color:            #060c1a;
+
+        /* ── Input Area ── */
+        --chat--textarea--height:     50px;
+        --chat--textarea--max-height: 10rem;
+        --chat--input--font-size:     0.9rem;
+        --chat--input--border:        0;
+        --chat--input--border-radius: 0;
+        --chat--input--padding:       0.8rem 1rem;
+        --chat--input--background:    rgba(255,255,255,0.05);
+        --chat--input--text-color:    #232222;
+        --chat--input--line-height:   1.5;
+        --chat--input--placeholder--font-size: 0.88rem;
+        --chat--input--border-active: 0;
+
+        /* ── Buttons ── */
+        --chat--button--padding:        0.6rem 1.2rem;
+        --chat--button--border-radius:  50px;
+        --chat--button--font-size:      0.95rem;
+        --chat--button--line-height:    1;
+        /* Primary (Start Chat / Send) */
+        --chat--button--color--primary:               #060c1a;
+        --chat--button--background--primary:          #FFB800;
+        --chat--button--border--primary:              none;
+        --chat--button--color--primary--hover:        #060c1a;
+        --chat--button--background--primary--hover:   #e6a000;
+        --chat--button--border--primary--hover:       none;
+        --chat--button--color--primary--disabled:     #060c1a;
+        --chat--button--background--primary--disabled:#b38500;
+        --chat--button--border--primary--disabled:    none;
+
+        /* ── Send & File Buttons ── */
+        --chat--input--send--button--background:        #FFB800;
+        --chat--input--send--button--color:             #060c1a;
+        --chat--input--send--button--background-hover:  #e6a000;
+        --chat--input--send--button--color-hover:       #060c1a;
+        --chat--input--file--button--background:        rgba(255,255,255,0.05);
+        --chat--input--file--button--color:             #00D4FF;
+        --chat--input--file--button--background-hover:  rgba(255,255,255,0.1);
+        --chat--input--file--button--color-hover:       #00D4FF;
+
+        /* ── Body & Footer ── */
+        --chat--body--background:   #060c1a;
+        --chat--footer--background: #060c1a;
+        --chat--footer--color:      rgba(255,255,255,0.4);
+      }
+
+      /* ── Extra polish via class selectors ── */
+
+      /* Chat window shadow + blur */
+      .n8n-chat-window {
+        box-shadow: 0 30px 70px rgba(0,0,0,0.85), 0 0 50px rgba(0,212,255,0.1) !important;
+        backdrop-filter: blur(20px) !important;
+        overflow: hidden !important;
+      }
+
+      /* Launcher icon: dark color on gold bg */
+      .n8n-chat-window-toggle svg,
+      .n8n-chat-window-toggle svg path,
+      .n8n-chat-window-toggle svg * {
+        fill:   #060c1a !important;
+        color:  #060c1a !important;
+        stroke: #060c1a !important;
+      }
+      .n8n-chat-window-toggle:hover {
+        transform: scale(1.1) rotate(6deg) !important;
+        box-shadow: 0 14px 40px rgba(255,184,0,0.75) !important;
+      }
+
+      /* Header subtitle color */
+      .n8n-chat-window-header .n8n-chat-window-header-subtitle {
+        color: #00D4FF !important;
+      }
+
+      /* Bot bubble tail: sharp bottom-left corner */
+      .n8n-chat-message-from-bot .n8n-chat-message-text {
+        border-radius: 1.25rem 1.25rem 1.25rem 0.2rem !important;
+      }
+
+      /* User bubble tail: sharp bottom-right corner */
+      .n8n-chat-message-from-user .n8n-chat-message-text {
+        border-radius: 1.25rem 1.25rem 0.2rem 1.25rem !important;
+      }
+
+      /* Input wrapper pill shape */
+      .n8n-chat-input-wrapper {
+        border-radius: 50px !important;
+        border: 1px solid rgba(0,212,255,0.3) !important;
+        background: rgba(255,255,255,0.05) !important;
+        overflow: hidden !important;
+      }
+      .n8n-chat-input-wrapper:focus-within {
+        border-color: #00D4FF !important;
+        box-shadow: 0 0 16px rgba(0,212,255,0.25) !important;
+      }
+
+      /* Send button dark icon */
+      .n8n-chat-input-send-button svg,
+      .n8n-chat-input-send-button svg * {
+        fill:  #060c1a !important;
+        color: #060c1a !important;
+      }
+
+      /* ── Typed text color fix ── */
+      .n8n-chat-input-wrapper textarea,
+      .n8n-chat-input-wrapper input,
+      .n8n-chat-input-wrapper textarea:focus,
+      .n8n-chat-input-wrapper input:focus {
+        color: #ffffff !important;
+        caret-color: #00D4FF !important;
+        background: transparent !important;
+        -webkit-text-fill-color: #ffffff !important;
+      }
+
+      /* Scrollbar */
+      .n8n-chat-messages-list::-webkit-scrollbar       { width: 4px; }
+      .n8n-chat-messages-list::-webkit-scrollbar-track { background: transparent; }
+      .n8n-chat-messages-list::-webkit-scrollbar-thumb {
+        background: rgba(0,212,255,0.3);
+        border-radius: 10px;
+      }
+    </style>
   </body>
 </html>

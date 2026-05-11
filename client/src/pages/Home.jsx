@@ -12,6 +12,12 @@ const Home = () => {
   const [gallery, setGallery] = useState([]);
   const [isGalleryExpanded, setIsGalleryExpanded] = useState(false);
   const [showVideoModal, setShowVideoModal] = useState(false);
+  const [currentHeroImage, setCurrentHeroImage] = useState(0);
+
+  const heroImages = [
+    '/assets/homehero1.jpeg',
+    '/assets/homehero2.jpeg'
+  ];
   
   useEffect(() => {
     AOS.init({ duration: 1000, easing: "ease-out-cubic", once: false, offset: 50 });
@@ -20,6 +26,11 @@ const Home = () => {
     fetchGallery();
     // Show the promotional video modal on page load
     setShowVideoModal(true);
+
+    const interval = setInterval(() => {
+      setCurrentHeroImage((prev) => (prev + 1) % heroImages.length);
+    }, 5000);
+    return () => clearInterval(interval);
   }, []);
 
   const fetchGallery = async () => {
@@ -44,8 +55,18 @@ const Home = () => {
 
       {/* ======================= COMPACT RIGHT VIDEO HERO ======================= */}
       <section className="hero-compact-right">
-        {/* Cinematic Background Image */}
-        <div className="hero-bg-image" style={{ backgroundImage: "url('/assets/home_hero_indian.png')" }}></div>
+        {/* Cinematic Background Image Slideshow */}
+        {heroImages.map((img, index) => (
+          <div
+            key={index}
+            className="hero-bg-image"
+            style={{ 
+              backgroundImage: `url('${img}')`,
+              opacity: currentHeroImage === index ? 1 : 0,
+              transition: 'opacity 1.5s ease-in-out'
+            }}
+          ></div>
+        ))}
         <div className="hero-bg-overlay"></div>
 
         <div className="container" style={{ position: "relative", zIndex: 10 }}>

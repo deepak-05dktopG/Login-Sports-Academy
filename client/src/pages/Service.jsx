@@ -14,8 +14,8 @@ const Service = () => {
   }, []);
 
   const swimmingSchedule = [
-    { day: "Sun & Mon", time: "6:00 AM – 6:00 PM", type: "Public (No Coaching)", badge: "🏊 Open" },
-    { day: "Tue – Sat", time: "6:00 – 9:00 AM", type: "Morning Coaching", badge: "🎓 Coach" },
+    { day: "Sun & Mon", time: "6:00 AM – 6:00 PM", type: "Public Time", badge: "🏊 Open" },
+    { day: "Tue – Sat", time: "6:00 – 9:00 AM", type: "Morning Batch", badge: "🎓 Coach" },
     { day: "Tue – Sat", time: "10:00 – 11:00 AM", type: "Ladies Batch", badge: "👩 Ladies" },
     { day: "Tue – Sat", time: "11:00 AM – 3:00 PM", type: "Public Batch", badge: "🏊 Open" },
     { day: "Tue – Sat", time: "4:00 – 6:00 PM", type: "Evening Coaching", badge: "🎓 Coach" },
