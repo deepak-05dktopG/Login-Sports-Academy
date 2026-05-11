@@ -150,8 +150,9 @@
         },
       });
 
-      // Inject academy logo into chat header once it renders
+      // Inject academy logo into chat header and launcher once they render
       const observer = new MutationObserver(() => {
+        // 1. Header Logo
         const header = document.querySelector('.n8n-chat-window-header');
         if (header && !header.querySelector('.lsa-chat-logo')) {
           const logoWrapper = document.createElement('div');
@@ -176,6 +177,22 @@
           `;
           logoWrapper.appendChild(img);
           header.insertBefore(logoWrapper, header.firstChild);
+        }
+
+        // 2. Launcher Icon (Toggle Button)
+        const toggle = document.querySelector('.n8n-chat-window-toggle');
+        if (toggle && !toggle.querySelector('.lsa-launcher-logo')) {
+          const img = document.createElement('img');
+          img.src = '/assets/Logo.png';
+          img.className = 'lsa-launcher-logo';
+          img.style.cssText = `
+            width: 100%;
+            height: 100%;
+            object-fit: contain;
+            padding: 8px;
+            pointer-events: none;
+          `;
+          toggle.appendChild(img);
         }
       });
       observer.observe(document.body, { childList: true, subtree: true });
@@ -209,8 +226,8 @@
         /* ── Window ── */
         --chat--window--width:         390px;
         --chat--window--height:        600px;
-        --chat--window--bottom:        28px;
-        --chat--window--right:         28px;
+        --chat--window--bottom:        15px;
+        --chat--window--right:         8px;
         --chat--window--z-index:       9999;
         --chat--window--border:        1px solid rgba(0,212,255,0.25);
         --chat--window--border-radius: 1.75rem;
@@ -218,7 +235,7 @@
 
         /* ── Header ── */
         --chat--header-height:           auto;
-        --chat--header--padding:         1.2rem 1.4rem;
+        --chat--header--padding:         0.5rem 1.4rem;
         --chat--header--background:      linear-gradient(135deg, #060c1a 0%, #0d1f3c 100%);
         --chat--header--color:           #ffffff;
         --chat--header--border-top:      none;
@@ -227,12 +244,12 @@
         --chat--header--border-right:    none;
         --chat--heading--font-size:      1.1rem;
         --chat--subtitle--font-size:     0.78rem;
-        --chat--subtitle--line-height:   1.5;
+        --chat--subtitle--line-height:   0.5px;
 
         /* ── Messages ── */
         --chat--message--font-size:          0.88rem;
         --chat--message--padding:            0.8rem 1rem;
-        --chat--message--border-radius:      1.25rem;
+        --chat--message--border-radius:      2.25rem;
         --chat--message-line-height:         1.65;
         --chat--message--margin-bottom:      0.6rem;
         --chat--message--bot--background:    rgba(0,212,255,0.07);
@@ -255,9 +272,9 @@
         --chat--toggle--color:            #060c1a;
 
         /* ── Input Area ── */
-        --chat--textarea--height:     50px;
-        --chat--textarea--max-height: 10rem;
-        --chat--input--font-size:     0.9rem;
+        --chat--textarea--height:     40px;
+        --chat--textarea--max-height: 5rem;
+        --chat--input--font-size:     1rem;
         --chat--input--border:        0;
         --chat--input--border-radius: 0;
         --chat--input--padding:       0.8rem 1rem;
@@ -308,13 +325,12 @@
         overflow: hidden !important;
       }
 
-      /* Launcher icon: dark color on gold bg */
-      .n8n-chat-window-toggle svg,
-      .n8n-chat-window-toggle svg path,
-      .n8n-chat-window-toggle svg * {
-        fill:   #060c1a !important;
-        color:  #060c1a !important;
-        stroke: #060c1a !important;
+      /* Launcher icon: hide default SVG and show custom logo */
+      .n8n-chat-window-toggle svg {
+        display: none !important;
+      }
+      .lsa-launcher-logo {
+        display: block !important;
       }
       .n8n-chat-window-toggle:hover {
         transform: scale(1.1) rotate(6deg) !important;
