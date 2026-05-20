@@ -186,7 +186,7 @@ const Contact = () => {
         <div style={{
           position: "absolute",
           top: 0, left: 0, right: 0, bottom: 0,
-          backgroundImage: "url('/assets/home_hero_indian.png')",
+          backgroundImage: "url('/assets/homehero1.jpeg')",
           backgroundSize: "cover",
           backgroundPosition: "center",
           animation: "kenBurns 20s infinite alternate ease-in-out",

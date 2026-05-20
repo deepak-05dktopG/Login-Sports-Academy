@@ -11,7 +11,7 @@ import { Link } from 'react-router-dom'
 import Navbar from '../components/Navbar'
 import { downloadMemberIdCard } from '../utils/idCard'
 import { formatDateTime, formatHHmmTo12Hour } from '../utils/dateTime'
-import { FaSwimmingPool, FaTableTennis } from 'react-icons/fa'
+import { FaSwimmingPool, FaTableTennis, FaExclamationTriangle, FaShieldAlt } from 'react-icons/fa'
 
 const apiBase = import.meta.env.VITE_API_BASE_URL || '/api'
 
@@ -208,6 +208,8 @@ const Membership = () => {
   const [busy, setBusy] = useState(false)
   const [error, setError] = useState('')
   const [result, setResult] = useState(null)
+  const [paymentMethod, setPaymentMethod] = useState('razorpay')
+  const [showCryptoModal, setShowCryptoModal] = useState(true)
 
   const isAdmin = useMemo(/**
    * Used to expose admin-only tools like seeding plans.
@@ -631,6 +633,43 @@ const Membership = () => {
     setError('')
     setBusy(true)
 
+    if (paymentMethod === 'bns') {
+      setTimeout(() => {
+        try {
+          if (!selectedPlan) throw new Error('Select a plan')
+          const mockId = 'BNS-' + Math.floor(100000 + Math.random() * 900000)
+          const mockResult = {
+            plan: { planName: selectedPlan.planName },
+            members: selectedPlan.type === 'family' 
+              ? familyMembers.map((fm, idx) => ({
+                  _id: `${mockId}-FAM-${idx}`,
+                  name: normalizeText(fm.name) || 'Family Member',
+                  phone: normalizePhone10(fm.phone) || member.phone,
+                  qrCode: '/assets/CryptoQR.png',
+                  joinDate: new Date().toISOString().split('T')[0],
+                  expiryDate: new Date(Date.now() + (selectedPlan.durationInDays || 30) * 24 * 60 * 60 * 1000).toISOString().split('T')[0],
+                }))
+              : [{
+                  _id: mockId,
+                  name: normalizeText(member.name),
+                  phone: normalizePhone10(member.phone),
+                  qrCode: '/assets/CryptoQR.png',
+                  joinDate: new Date().toISOString().split('T')[0],
+                  expiryDate: new Date(Date.now() + (selectedPlan.durationInDays || 30) * 24 * 60 * 60 * 1000).toISOString().split('T')[0],
+                }]
+          }
+          setResult(mockResult)
+          setStep(STEP.DONE)
+          if (selectedPlan.type !== 'family') setMember(emptyMember)
+        } catch (e) {
+          setError(e.message)
+        } finally {
+          setBusy(false)
+        }
+      }, 1500)
+      return
+    }
+
     try {
       if (!selectedPlan) throw new Error('Select a plan')
 
@@ -910,6 +949,131 @@ const Membership = () => {
     <div style={{ fontFamily: "'Inter', sans-serif", backgroundColor: "#050810", color: "#fff", overflowX: "hidden" }}>
       <Navbar />
 
+      {/* Premium Web3 Crypto Payment Announcement Modal */}
+      {showCryptoModal && (
+        <div 
+          style={{
+            position: 'fixed',
+            top: 0,
+            left: 0,
+            right: 0,
+            bottom: 0,
+            background: 'rgba(5, 8, 16, 0.85)',
+            backdropFilter: 'blur(10px)',
+            zIndex: 99999,
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            padding: '20px'
+          }}
+        >
+          <div 
+            style={{
+              background: 'linear-gradient(135deg, #0e1424 0%, #060913 100%)',
+              border: '2px solid rgba(255, 184, 0, 0.4)',
+              borderRadius: 24,
+              boxShadow: '0 0 40px rgba(255, 184, 0, 0.25)',
+              color: '#fff',
+              maxWidth: '520px',
+              width: '100%',
+              padding: '28px',
+              position: 'relative',
+              overflow: 'hidden',
+              animation: 'modalFadeIn 0.3s ease-out'
+            }}
+          >
+            {/* Top decorative glow */}
+            <div 
+              style={{
+                position: 'absolute',
+                top: -50,
+                right: -50,
+                width: 150,
+                height: 150,
+                background: 'radial-gradient(circle, rgba(255,184,0,0.2) 0%, transparent 70%)',
+                pointerEvents: 'none'
+              }}
+            />
+
+            {/* Header */}
+            <div className="text-center mb-3">
+              <span style={{
+                fontSize: '11px',
+                background: '#FFB800',
+                color: '#050810',
+                fontWeight: 900,
+                padding: '4px 10px',
+                borderRadius: '6px',
+                textTransform: 'uppercase',
+                letterSpacing: '1px'
+              }}>
+                Optional Web3 BNS Alternative
+              </span>
+              <h4 style={{ color: '#FFB800', marginTop: 14, fontWeight: 900, fontSize: 20 }}>
+                ⚡ You Can Also Pay Through Crypto!
+              </h4>
+            </div>
+
+            {/* QR Code and Scan Details */}
+            <div className="d-flex flex-column align-items-center mb-3 p-3 text-center" style={{
+              background: 'rgba(255,184,0,0.04)',
+              border: '1px solid rgba(255,184,0,0.15)',
+              borderRadius: 16
+            }}>
+              <img 
+                src="/assets/CryptoQR.png" 
+                alt="BNS QR Code" 
+                style={{ 
+                  width: '140px', 
+                  height: '140px', 
+                  borderRadius: 14, 
+                  border: '2px solid #FFB800', 
+                  boxShadow: '0 0 20px rgba(255,184,0,0.3)',
+                  marginBottom: 12
+                }} 
+              />
+              <div style={{ fontWeight: 800, color: '#fff', fontSize: 14 }}>
+                Beldex Name Service (BNS)
+              </div>
+              <div style={{ fontSize: 13, marginTop: 4, color: '#FFB800' }}>
+                BNS Domain: <b>bob.bdx</b>
+              </div>
+              <div style={{ fontSize: 11, fontFamily: 'monospace', color: 'rgba(255,255,255,0.5)', marginTop: 4, wordBreak: 'break-all' }}>
+                bxciQ3akiHh...
+              </div>
+            </div>
+
+            {/* Explanatory text */}
+            <div style={{ fontSize: 13, color: 'rgba(255,255,255,0.85)', lineHeight: 1.5, marginBottom: 20 }}>
+              <p style={{ margin: 0 }}>
+                💡 <strong>Optional Crypto Checkout:</strong> In addition to our standard credit card and UPI options at checkout, <strong>you can also pay through Beldex (BNS) Cryptocurrency!</strong> Simply scan the QR or send payment directly to <strong>bob.bdx</strong>. Take a screenshot of your transfer proof, visit the receptionist at the Login Sports Academy desk, and we will activate your membership instantly!
+              </p>
+            </div>
+
+            {/* Action buttons */}
+            <div className="d-flex gap-2">
+              <button 
+                onClick={() => setShowCryptoModal(false)}
+                className="btn flex-fill"
+                style={{
+                  background: 'linear-gradient(90deg, #FFB800 0%, #D49A00 100%)',
+                  color: '#050810',
+                  fontWeight: 800,
+                  borderRadius: 12,
+                  padding: '12px',
+                  border: 'none',
+                  boxShadow: '0 4px 15px rgba(255,184,0,0.3)',
+                  cursor: 'pointer',
+                  transition: 'all 0.2s'
+                }}
+              >
+                Got it, Let's Go!
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
       {/* ======================= IMMERSIVE HERO ======================= */}
       <section style={{
         position: "relative",
@@ -925,7 +1089,7 @@ const Membership = () => {
         <div style={{
           position: "absolute",
           top: 0, left: 0, right: 0, bottom: 0,
-          backgroundImage: "url('/assets/home_hero_indian.png')",
+          backgroundImage: "url('/assets/homehero1.jpeg')",
           backgroundSize: "cover",
           backgroundPosition: "center",
           animation: "kenBurns 20s infinite alternate ease-in-out",
@@ -1071,6 +1235,70 @@ const Membership = () => {
                           })}
                         </div>
                       ) : null}
+
+                      {selectedService === 'swimming' && (
+                        <div 
+                          className="mt-3 p-3" 
+                          style={{
+                            background: 'linear-gradient(135deg, rgba(0, 212, 255, 0.08) 0%, rgba(0, 102, 255, 0.02) 100%)',
+                            border: '1px solid rgba(0, 212, 255, 0.25)',
+                            borderRadius: 16,
+                            color: '#fff',
+                            position: 'relative',
+                            overflow: 'hidden',
+                            boxShadow: '0 8px 32px rgba(0, 212, 255, 0.08)',
+                            textAlign: 'left'
+                          }}
+                        >
+                          <div className="d-flex align-items-center gap-2 mb-2 flex-wrap">
+                            <FaShieldAlt style={{ color: '#00D4FF', fontSize: '1.1rem', flexShrink: 0 }} />
+                            <h6 style={{ color: '#00D4FF', margin: 0, fontWeight: 900, fontSize: 13, textTransform: 'uppercase', letterSpacing: '0.5px' }}>
+                              🏊 Swimming Pool Dress Code Protocol
+                            </h6>
+                            <span style={{
+                              fontSize: '9px',
+                              background: 'rgba(0, 212, 255, 0.2)',
+                              border: '1px solid rgba(0, 212, 255, 0.4)',
+                              color: '#00D4FF',
+                              fontWeight: 900,
+                              padding: '2px 6px',
+                              borderRadius: '4px',
+                              textTransform: 'uppercase',
+                              marginLeft: 'auto'
+                            }}>
+                              Mandatory
+                            </span>
+                          </div>
+                          
+                          <div style={{ fontSize: '12px', color: 'rgba(255, 255, 255, 0.95)', lineHeight: '1.5' }}>
+                            <p style={{ margin: '0 0 8px 0' }}>
+                              Swimming pool dress codes strictly require proper, designated swimwear made of non-absorbent materials like <b>lycra, spandex, or polyester</b>.
+                            </p>
+                            
+                            <div className="d-flex gap-3 flex-wrap my-2" style={{ background: 'rgba(0, 0, 0, 0.2)', padding: '10px', borderRadius: '10px' }}>
+                              <div style={{ flex: '1 1 200px' }}>
+                                <span style={{ color: '#00D4FF', fontWeight: 800, fontSize: '11px' }}>✅ APPROVED:</span>
+                                <span style={{ color: 'rgba(255,255,255,0.85)', fontSize: '11px', display: 'block', marginTop: '2px' }}>
+                                  Lycra, Spandex, Polyester suits, swim caps & goggles.
+                                </span>
+                              </div>
+                              <div style={{ flex: '1 1 200px' }}>
+                                <span style={{ color: '#FF6B35', fontWeight: 800, fontSize: '11px' }}>❌ PROHIBITED:</span>
+                                <span style={{ color: 'rgba(255,255,255,0.85)', fontSize: '11px', display: 'block', marginTop: '2px' }}>
+                                  Regular cotton clothes, jeans, sarees, & casual undergarments.
+                                </span>
+                              </div>
+                            </div>
+
+                            <div className="d-flex align-items-start gap-2 mt-2" style={{ color: '#FFB800', fontSize: '11px' }}>
+                              <FaExclamationTriangle style={{ flexShrink: 0, marginTop: '2px' }} />
+                              <span>
+                                <b>Why?</b> Cotton clothes absorb water heavily, restrict movement, and release fibers that can clog the pool's high-performance filtration systems.
+                              </span>
+                            </div>
+                          </div>
+                        </div>
+                      )}
 
                       {selectedPlan ? (
                         <div className="membership-subcard mt-3">
@@ -1232,6 +1460,89 @@ const Membership = () => {
                           >
                             Continue
                           </button>
+                        </div>
+
+                        {/* High-end "OR" divider */}
+                        <div className="d-flex align-items-center my-4">
+                          <div style={{ flex: 1, height: '1px', background: 'linear-gradient(to right, transparent, rgba(255,184,0,0.4))' }}></div>
+                          <span style={{ 
+                            padding: '0 15px', 
+                            color: '#FFB800', 
+                            fontSize: '11px', 
+                            fontWeight: 900, 
+                            letterSpacing: '2px', 
+                            textTransform: 'uppercase',
+                            textShadow: '0 0 10px rgba(255,184,0,0.3)'
+                          }}>
+                            OR REGISTER VIA WEB3 BNS PAYMENTS
+                          </span>
+                          <div style={{ flex: 1, height: '1px', background: 'linear-gradient(to left, transparent, rgba(255,184,0,0.4))' }}></div>
+                        </div>
+
+                        {/* Elite Web3 BNS Payment Alternative Showcase */}
+                        <div 
+                          className="mt-3 p-3" 
+                          style={{
+                            background: 'linear-gradient(135deg, rgba(255, 184, 0, 0.08) 0%, rgba(255, 184, 0, 0.02) 100%)',
+                            border: '1px dashed rgba(255, 184, 0, 0.3)',
+                            borderRadius: 16,
+                            color: '#fff',
+                            position: 'relative',
+                            overflow: 'hidden'
+                          }}
+                        >
+                          <div 
+                            style={{
+                              position: 'absolute',
+                              top: -20,
+                              right: -20,
+                              width: 100,
+                              height: 100,
+                              background: 'radial-gradient(circle, rgba(255,184,0,0.15) 0%, transparent 70%)',
+                              pointerEvents: 'none'
+                            }}
+                          />
+                          <div className="d-flex flex-column flex-md-row align-items-center gap-3">
+                            <img 
+                              src="/assets/CryptoQR.png" 
+                              alt="Web3 BNS QR" 
+                              style={{ 
+                                width: '110px', 
+                                height: '110px', 
+                                borderRadius: 12, 
+                                border: '2px solid #FFB800', 
+                                boxShadow: '0 0 15px rgba(255, 184, 0, 0.25)',
+                                display: 'block' 
+                              }} 
+                            />
+                            <div>
+                              <div className="d-flex align-items-center gap-2 flex-wrap">
+                                <h6 style={{ color: '#FFB800', margin: 0, fontWeight: 900, fontSize: 13, textTransform: 'uppercase', letterSpacing: '0.5px' }}>
+                                  ⚡ Decentralized Web3 Payment Option
+                                </h6>
+                                <span style={{
+                                  fontSize: '9px',
+                                  background: '#FFB800',
+                                  color: '#050810',
+                                  fontWeight: 900,
+                                  padding: '2px 6px',
+                                  borderRadius: '4px',
+                                  textTransform: 'uppercase'
+                                }}>
+                                  BNS Enabled
+                                </span>
+                              </div>
+                              <p style={{ margin: '8px 0 6px 0', fontSize: '13px', color: 'rgba(255, 255, 255, 0.9)' }}>
+                                Pay instantly via <strong>Beldex Name Service (BNS)</strong> mapping at BNS domain: <b style={{ color: '#FFB800' }}>bob.bdx</b>
+                              </p>
+                              <p style={{ margin: '0 0 8px 0', fontSize: '11px', fontFamily: 'monospace', color: 'rgba(255, 255, 255, 0.55)', wordBreak: 'break-all' }}>
+                                bxciQ3akiHh...
+                              </p>
+                              <div style={{ fontSize: '12px', color: 'rgba(255, 255, 255, 0.75)', lineHeight: '1.4' }}>
+                                💡 <strong>How to complete registration:</strong> Scan the QR or send payment directly to <strong>bob.bdx</strong>. After payment, take a screenshot of your transfer proof, visit the Login Sports Academy desk, and show it to the admin. The admin will immediately activate your membership and print your dynamic QR ID card.
+                              </div>
+                            </div>
+                          </div>
                         </div>
                       </div>
 

@@ -18,7 +18,7 @@ const Home = () => {
     '/assets/homehero1.jpeg',
     '/assets/homehero2.jpeg'
   ];
-  
+
   useEffect(() => {
     AOS.init({ duration: 1000, easing: "ease-out-cubic", once: false, offset: 50 });
     AOS.refresh();
@@ -29,7 +29,7 @@ const Home = () => {
 
     const interval = setInterval(() => {
       setCurrentHeroImage((prev) => (prev + 1) % heroImages.length);
-    }, 5000);
+    }, 2000);
     return () => clearInterval(interval);
   }, []);
 
@@ -60,7 +60,7 @@ const Home = () => {
           <div
             key={index}
             className="hero-bg-image"
-            style={{ 
+            style={{
               backgroundImage: `url('${img}')`,
               opacity: currentHeroImage === index ? 1 : 0,
               transition: 'opacity 1.5s ease-in-out'
@@ -71,7 +71,7 @@ const Home = () => {
 
         <div className="container" style={{ position: "relative", zIndex: 10 }}>
           <div className="row align-items-center" style={{ padding: "120px 0 80px 0" }}>
-            
+
             {/* Typography & CTA */}
             <div className="col-lg-12 text-center" data-aos="fade-up" data-aos-duration="1200">
               <div className="hero-pill mb-4 mx-auto">
@@ -83,7 +83,7 @@ const Home = () => {
                 DEFINE YOUR <br />
                 <span className="text-gradient-gold">LEGACY.</span>
               </h1>
-              
+
               <p className="hero-subtitle-dynamic mx-auto" style={{ maxWidth: '700px' }}>
                 Train relentlessly. Perform flawlessly. Access Salem's elite Olympic-standard facilities and world-class coaching to unlock your true athletic potential.
               </p>
@@ -127,7 +127,7 @@ const Home = () => {
       {/* ======================= THE ACADEMY DIFFERENCE (ADVANCED BENTO) ======================= */}
       <section style={{ padding: "120px 0", position: "relative" }}>
         <div className="container" style={{ zIndex: 1, position: "relative" }}>
-          
+
           <div className="text-center mb-5" data-aos="fade-up">
             <p className="section-pre-title">Why Choose Us</p>
             <h2 className="section-title">
@@ -138,7 +138,7 @@ const Home = () => {
           <div className="bento-grid-pro">
             {/* Box 1: Swimming (Large Image Card) */}
             <div className="bento-pro-item card-swimming" data-aos="fade-up" data-aos-delay="100">
-              <div className="card-bg" style={{ backgroundImage: "url('/assets/realistic_swimming.png')" }} />
+              <div className="card-bg" style={{ backgroundImage: "url('/assets/homehero1.jpeg')" }} />
               <div className="card-overlay" />
               <div className="card-content">
                 <div className="icon-glass cyan"><FaSwimmingPool /></div>
@@ -150,7 +150,7 @@ const Home = () => {
 
             {/* Box 2: Badminton (Large Image Card) */}
             <div className="bento-pro-item card-badminton" data-aos="fade-up" data-aos-delay="200">
-              <div className="card-bg" style={{ backgroundImage: "url('/assets/realistic_badminton.png')" }} />
+              <div className="card-bg" style={{ backgroundImage: "url('/assets/homehero2.jpeg')" }} />
               <div className="card-overlay" />
               <div className="card-content">
                 <div className="icon-glass gold"><FaTableTennis /></div>
@@ -190,17 +190,17 @@ const Home = () => {
       </section>
 
       {/* ======================= TRAINING EXCELLENCE (BACKGROUND VIDEO) ======================= */}
-      <section style={{ 
-        position: "relative", 
-        padding: "150px 0", 
+      <section style={{
+        position: "relative",
+        padding: "150px 0",
         backgroundColor: "#050810",
         overflow: "hidden"
       }}>
-        <video 
-          autoPlay 
-          muted 
-          loop 
-          playsInline 
+        <video
+          autoPlay
+          muted
+          loop
+          playsInline
           style={{
             position: "absolute", top: "50%", left: "50%", width: "100%", height: "100%",
             objectFit: "cover", transform: "translate(-50%, -50%)", zIndex: 0, opacity: 0.3
@@ -220,7 +220,7 @@ const Home = () => {
               <p style={{ color: "rgba(255,255,255,0.85)", fontSize: "1.2rem", lineHeight: "1.8", maxWidth: "800px", margin: "30px auto" }}>
                 Step inside Salem's most elite training environment. From the rhythm of the badminton courts to the precision of our Olympic-standard pools, our academy is built for one purpose: to help you achieve your peak performance.
               </p>
-              
+
               <div className="d-flex justify-content-center flex-wrap gap-4 mb-5">
                 <div className="t-stat" style={{ minWidth: "180px", background: "rgba(255,255,255,0.05)", backdropFilter: "blur(10px)" }}>
                   <h4>80+</h4>
@@ -251,7 +251,7 @@ const Home = () => {
               </div>
               <NavLink to="/about" className="view-all-link">View All <FaArrowRight /></NavLink>
             </div>
-            
+
             <div className="row g-5">
               {posts.map((post, i) => (
                 <div className="col-lg-4 col-md-6" key={post._id} data-aos="fade-up" data-aos-delay={i * 150}>
@@ -299,7 +299,7 @@ const Home = () => {
 
             {gallery.length > 3 && (
               <div className="text-center mt-5">
-                <button 
+                <button
                   onClick={() => setIsGalleryExpanded(!isGalleryExpanded)}
                   className="btn-outline-white"
                   style={{ padding: "12px 40px", borderRadius: "50px" }}
@@ -314,17 +314,17 @@ const Home = () => {
 
       {/* ======================= FINAL CTA WITH BACKGROUND VIDEO ======================= */}
       <section className="cta-video-section">
-        <video 
-          autoPlay 
-          muted 
-          loop 
-          playsInline 
+        <video
+          autoPlay
+          muted
+          loop
+          playsInline
           className="cta-video-bg"
         >
           <source src="/assets/trainingvideo.mp4" type="video/mp4" />
         </video>
         <div className="cta-video-overlay"></div>
-        
+
         <div className="container cta-video-content" data-aos="fade-up">
           <h2 style={{ fontFamily: "'Orbitron', sans-serif", fontSize: "clamp(2.5rem, 5vw, 4rem)", fontWeight: 900, marginBottom: "20px" }}>
             READY TO <span className="text-gradient-gold">START?</span>
@@ -1009,27 +1009,27 @@ const Home = () => {
 
       {/* ======================= VIDEO POPUP MODAL ======================= */}
       {showVideoModal && (
-        <div 
+        <div
           onClick={() => setShowVideoModal(false)}
           style={{
-          position: "fixed", top: 0, left: 0, width: "100vw", height: "100vh",
-          backgroundColor: "rgba(0, 0, 0, 0.5)", zIndex: 9999,
-          display: "flex", justifyContent: "center", alignItems: "center",
-          backdropFilter: "blur(5px)",
-          cursor: "pointer"
-        }}>
-          <div 
+            position: "fixed", top: 0, left: 0, width: "100vw", height: "100vh",
+            backgroundColor: "rgba(0, 0, 0, 0.5)", zIndex: 9999,
+            display: "flex", justifyContent: "center", alignItems: "center",
+            backdropFilter: "blur(5px)",
+            cursor: "pointer"
+          }}>
+          <div
             onClick={(e) => e.stopPropagation()}
             style={{
-            position: "relative", width: "auto", height: "auto",
-            maxWidth: "90vw", maxHeight: "90vh",
-            background: "transparent", padding: "0", borderRadius: "16px",
-            boxShadow: "0 20px 50px rgba(0,0,0,0.5)",
-            border: "1px solid rgba(255, 215, 0, 0.3)",
-            display: "flex", justifyContent: "center", alignItems: "center",
-            cursor: "default"
-          }}>
-            <button 
+              position: "relative", width: "auto", height: "auto",
+              maxWidth: "90vw", maxHeight: "90vh",
+              background: "transparent", padding: "0", borderRadius: "16px",
+              boxShadow: "0 20px 50px rgba(0,0,0,0.5)",
+              border: "1px solid rgba(255, 215, 0, 0.3)",
+              display: "flex", justifyContent: "center", alignItems: "center",
+              cursor: "default"
+            }}>
+            <button
               onClick={() => setShowVideoModal(false)}
               style={{
                 position: "absolute", top: "-15px", right: "-15px",
@@ -1042,9 +1042,9 @@ const Home = () => {
             >
               &times;
             </button>
-            <video 
-              controls 
-              autoPlay 
+            <video
+              controls
+              autoPlay
               playsInline
               style={{ maxWidth: "100%", maxHeight: "90vh", borderRadius: "12px", display: "block", objectFit: "contain" }}
             >

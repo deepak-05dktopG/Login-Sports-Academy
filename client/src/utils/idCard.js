@@ -207,7 +207,7 @@ export const buildMemberIdCardPng = async (
         joinDate,
         expiryDate,
         logoSrc = '/assets/Logo.png',
-        backgroundSrc = '/assets/home_hero_indian.png',
+        backgroundSrc = '/assets/homehero1.jpeg',
         academyName = 'LOGIN SPORTS ACADEMY',
         rightStripText: _rightStripText = 'MEMBER',
     }

@@ -57,7 +57,7 @@ const About = () => {
         <div style={{
           position: "absolute",
           top: 0, left: 0, right: 0, bottom: 0,
-          backgroundImage: "url('/assets/home_hero_indian.png')",
+          backgroundImage: "url('/assets/homehero1.jpeg')",
           backgroundSize: "cover",
           backgroundPosition: "center",
           animation: "kenBurns 20s infinite alternate ease-in-out",
@@ -129,7 +129,7 @@ const About = () => {
           <div className="row g-5 align-items-center">
             <div className="col-lg-6" data-aos="fade-right">
               <div className="story-image-wrapper">
-                <img src="/assets/home_hero_indian.png" alt="Academy Facilities" className="img-fluid" />
+                <img src="/assets/homehero2.jpeg" alt="Academy Facilities" className="img-fluid" />
                 <div className="story-badge">
                   <FaMedal style={{ fontSize: "2rem", color: "#FFB800", marginBottom: "10px" }} />
                   <h5 style={{ margin: 0, fontWeight: 800, fontSize: "1.1rem" }}>Excellence</h5>

@@ -3,7 +3,7 @@ import { NavLink } from "react-router-dom";
 import Navbar from "../components/Navbar";
 import AOS from "aos";
 import "aos/dist/aos.css";
-import { FaSwimmingPool, FaTableTennis, FaTrophy, FaUsers, FaClock, FaCheckCircle, FaArrowRight, FaStar, FaCalendarAlt } from "react-icons/fa";
+import { FaSwimmingPool, FaTableTennis, FaTrophy, FaUsers, FaClock, FaCheckCircle, FaArrowRight, FaStar, FaCalendarAlt, FaExclamationTriangle, FaShieldAlt } from "react-icons/fa";
 
 const Service = () => {
   const [activeSport, setActiveSport] = useState("swimming");
@@ -65,7 +65,7 @@ const Service = () => {
         <div style={{
           position: "absolute",
           top: 0, left: 0, right: 0, bottom: 0,
-          backgroundImage: "url('/assets/home_hero_indian.png')",
+          backgroundImage: "url('/assets/homehero1.jpeg')",
           backgroundSize: "cover",
           backgroundPosition: "center",
           animation: "kenBurns 20s infinite alternate ease-in-out",
@@ -228,6 +228,56 @@ const Service = () => {
               </div>
             </div>
           </div>
+
+          {/* Swimming Pool Dress Code Section */}
+          <div className="col-12 mt-5" data-aos="fade-up">
+            <div className="bento-dresscode-card">
+              <div className="dresscode-header">
+                <div className="dresscode-icon"><FaShieldAlt /></div>
+                <div>
+                  <h3 className="font-orbitron" style={{ fontWeight: 800, margin: 0 }}>Swimming Pool Dress Code</h3>
+                  <p style={{ color: "#00D4FF", fontWeight: 600, fontSize: "0.85rem", margin: 0, textTransform: "uppercase" }}>Mandatory Hygiene & Safety Protocol</p>
+                </div>
+              </div>
+              
+              <div className="dresscode-body">
+                <div className="row g-4">
+                  <div className="col-md-5">
+                    <div className="dresscode-rules-box bg-permitted">
+                      <h4 className="rules-title text-success-cyan">✅ APPROVED SWIMWEAR</h4>
+                      <p className="rules-desc">Proper, designated swimwear made of non-absorbent materials:</p>
+                      <ul className="rules-list">
+                        <li><span>Lycra / Spandex suits</span></li>
+                        <li><span>Polyester swimwear</span></li>
+                        <li><span>Designated swimming caps & goggles</span></li>
+                      </ul>
+                    </div>
+                  </div>
+                  
+                  <div className="col-md-5">
+                    <div className="dresscode-rules-box bg-prohibited">
+                      <h4 className="rules-title text-danger-orange">❌ STRICTLY PROHIBITED</h4>
+                      <p className="rules-desc">Universally banned in the aquatic area due to hygiene standards:</p>
+                      <ul className="rules-list">
+                        <li><span>Regular cotton clothes & T-shirts</span></li>
+                        <li><span>Jeans & denims</span></li>
+                        <li><span>Sarees & casual undergarments</span></li>
+                      </ul>
+                    </div>
+                  </div>
+
+                  <div className="col-md-2 d-flex flex-column justify-content-center">
+                    <div className="dresscode-warning-badge">
+                      <FaExclamationTriangle className="warning-pulse-icon" />
+                      <h5>WHY IT MATTERS</h5>
+                      <p style={{ fontSize: "0.78rem" }}>Cotton absorbs water, restricts movement, and releases fibers that clog high-performance filtration systems.</p>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+
         </div>
       </section>
 
@@ -585,6 +635,156 @@ const Service = () => {
           transform: translateY(-3px);
           box-shadow: 0 15px 30px rgba(0, 212, 255, 0.4);
           color: white;
+        }
+
+        /* Dress Code Card Styles */
+        .bento-dresscode-card {
+          background: linear-gradient(135deg, rgba(10,14,26,0.95) 0%, rgba(20,30,55,0.7) 100%);
+          border: 1px solid rgba(0, 212, 255, 0.15);
+          border-radius: 30px;
+          padding: 40px;
+          position: relative;
+          overflow: hidden;
+          box-shadow: 0 20px 50px rgba(0,0,0,0.4);
+          text-align: left;
+        }
+
+        .dresscode-header {
+          display: flex;
+          align-items: center;
+          gap: 20px;
+          margin-bottom: 35px;
+        }
+
+        .dresscode-icon {
+          width: 60px;
+          height: 60px;
+          border-radius: 18px;
+          display: flex;
+          align-items: center;
+          justify-content: center;
+          font-size: 1.8rem;
+          background: rgba(0,212,255,0.1);
+          color: #00D4FF;
+        }
+
+        .dresscode-rules-box {
+          padding: 24px;
+          border-radius: 20px;
+          height: 100%;
+          border: 1px solid;
+          transition: all 0.3s ease;
+        }
+
+        .dresscode-rules-box:hover {
+          transform: translateY(-3px);
+        }
+
+        .bg-permitted {
+          background: rgba(0, 212, 255, 0.03);
+          border-color: rgba(0, 212, 255, 0.15);
+        }
+
+        .bg-permitted:hover {
+          border-color: rgba(0, 212, 255, 0.3);
+          box-shadow: 0 10px 25px rgba(0, 212, 255, 0.08);
+        }
+
+        .bg-prohibited {
+          background: rgba(255, 107, 53, 0.03);
+          border-color: rgba(255, 107, 53, 0.15);
+        }
+
+        .bg-prohibited:hover {
+          border-color: rgba(255, 107, 53, 0.3);
+          box-shadow: 0 10px 25px rgba(255, 107, 53, 0.08);
+        }
+
+        .text-success-cyan {
+          color: #00D4FF;
+          font-weight: 800;
+          font-size: 1.1rem;
+          margin-bottom: 12px;
+        }
+
+        .text-danger-orange {
+          color: #FF6B35;
+          font-weight: 800;
+          font-size: 1.1rem;
+          margin-bottom: 12px;
+        }
+
+        .rules-desc {
+          font-size: 0.88rem;
+          color: rgba(255,255,255,0.7);
+          margin-bottom: 15px;
+        }
+
+        .rules-list {
+          list-style: none;
+          padding: 0;
+          margin: 0;
+          display: flex;
+          flex-direction: column;
+          gap: 10px;
+        }
+
+        .rules-list li {
+          display: flex;
+          align-items: center;
+          font-size: 0.92rem;
+          color: rgba(255,255,255,0.85);
+        }
+
+        .rules-list li::before {
+          content: "•";
+          color: #00D4FF;
+          font-weight: bold;
+          display: inline-block;
+          width: 1em;
+          margin-right: 0.5em;
+        }
+
+        .bg-prohibited .rules-list li::before {
+          color: #FF6B35;
+        }
+
+        .dresscode-warning-badge {
+          text-align: center;
+          padding: 10px;
+        }
+
+        .warning-pulse-icon {
+          font-size: 2.2rem;
+          color: #FFB800;
+          margin-bottom: 15px;
+          animation: warningPulse 2s infinite ease-in-out;
+        }
+
+        .dresscode-warning-badge h5 {
+          font-family: 'Orbitron', sans-serif;
+          font-size: 0.9rem;
+          font-weight: 800;
+          color: #FFB800;
+          margin-bottom: 10px;
+          letter-spacing: 0.5px;
+        }
+
+        .dresscode-warning-badge p {
+          font-size: 0.8rem;
+          color: rgba(255,255,255,0.65);
+          line-height: 1.5;
+        }
+
+        @keyframes warningPulse {
+          0%, 100% { transform: scale(1); filter: drop-shadow(0 0 0px rgba(255,184,0,0)); }
+          50% { transform: scale(1.1); filter: drop-shadow(0 0 10px rgba(255,184,0,0.5)); }
+        }
+
+        @media (max-width: 991px) {
+          .bento-dresscode-card { padding: 30px; }
+          .dresscode-warning-badge { margin-top: 20px; text-align: left; }
+          .dresscode-warning-badge p { font-size: 0.88rem; }
         }
 
         /* Responsive */
