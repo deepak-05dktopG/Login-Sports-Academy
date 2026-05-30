@@ -52,3 +52,30 @@ export const adminFetch = (url, options = {}) => {
     const headers = getAdminAuthHeaders(options.headers || {})
     return fetch(url, { ...options, headers })
 };
+
+// Decodes the JWT admin token and returns the payload (e.g. { role, adminDbId, email })
+// Returns null if no token or token is malformed
+export const getLoggedInAdmin = () => {
+    try {
+        const token = getAdminToken();
+        if (!token) return null;
+        const base64Url = token.split('.')[1];
+        if (!base64Url) return null;
+        const base64 = base64Url.replace(/-/g, '+').replace(/_/g, '/');
+        const jsonPayload = decodeURIComponent(
+            window.atob(base64).split('').map(c =>
+                '%' + ('00' + c.charCodeAt(0).toString(16)).slice(-2)
+            ).join('')
+        );
+        return JSON.parse(jsonPayload);
+    } catch (e) {
+        return null;
+    }
+};
+
+// Returns true if the logged-in admin has the 'superadmin' role
+export const isSuperAdmin = () => {
+    const admin = getLoggedInAdmin();
+    return admin?.role === 'superadmin';
+};
+

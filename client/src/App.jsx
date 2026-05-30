@@ -6,7 +6,7 @@
 import React from 'react'
 import { Navigate, Route, Routes, useLocation, useNavigate } from 'react-router-dom'
 import AOS from 'aos'
-import { clearAdminToken } from './utils/adminAuth'
+import { clearAdminToken, getLoggedInAdmin } from './utils/adminAuth'
 
 import AppErrorBoundary from './components/AppErrorBoundary'
 
@@ -57,6 +57,40 @@ function ScannerExitRedirect() {
   }, [location.pathname, navigate])
 
   return null
+}
+
+// Route guard — only super admins can access wrapped routes
+// Normal admins see a brief "Access Denied" notice then get redirected to dashboard
+function SuperAdminRoute({ children }) {
+  const navigate = useNavigate();
+  const admin = getLoggedInAdmin();
+  const authorized = admin?.role === 'superadmin';
+
+  React.useEffect(() => {
+    if (!authorized) {
+      const timer = setTimeout(() => navigate('/admin/dashboard', { replace: true }), 2000);
+      return () => clearTimeout(timer);
+    }
+  }, [authorized, navigate]);
+
+  if (!authorized) {
+    return (
+      <div style={{
+        minHeight: '100vh', display: 'flex', flexDirection: 'column',
+        alignItems: 'center', justifyContent: 'center',
+        background: 'linear-gradient(135deg, #0a0e1a, #151d30)',
+        gap: 16,
+      }}>
+        <div style={{ fontSize: 48 }}>🔒</div>
+        <h2 style={{ color: '#FF6B6B', margin: 0, fontWeight: 900, fontSize: 24 }}>Access Denied</h2>
+        <p style={{ color: 'rgba(255,255,255,0.5)', margin: 0 }}>
+          Super Admin privileges required. Redirecting…
+        </p>
+      </div>
+    );
+  }
+
+  return children;
 }
 
 function App() {
@@ -152,7 +186,7 @@ function App() {
             <Route path="/admin/daily-tracker" element={<DailyTracker />} />
             <Route path="/admin/manage-plans" element={<ManagePlans />} />
             <Route path="/admin/whatsapp-status" element={<WhatsAppStatus />} />
-            <Route path="/admin/manage-admins" element={<ManageAdmins />} />
+            <Route path="/admin/manage-admins" element={<SuperAdminRoute><ManageAdmins /></SuperAdminRoute>} />
 
             {/* Fallbacks to avoid blank pages on removed/unknown routes */}
             <Route path="/admin/*" element={<Navigate to="/admin/dashboard" replace />} />

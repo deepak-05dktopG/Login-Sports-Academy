@@ -318,25 +318,64 @@ export const forgotPasswordRequest = asyncHandler(async (req, res) => {
                 }
             })
 
+            const emailText = `Hello,
+
+You requested a 6-digit OTP verification code to retrieve/reset your Login Sports Academy admin password.
+
+Verification Code: ${otp}
+
+This code will expire in 10 minutes. For security, please do not share this code with anyone.
+
+Best regards,
+Login Sports Academy Support`;
+
+            const emailHtml = `<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="utf-8">
+  <title>LSA OTP Verification</title>
+</head>
+<body style="font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif; margin: 0; padding: 20px; background-color: #f9fafb; color: #1f2937;">
+  <table align="center" border="0" cellpadding="0" cellspacing="0" width="100%" style="max-width: 500px; background-color: #ffffff; border: 1px solid #e5e7eb; border-radius: 8px; overflow: hidden; box-shadow: 0 1px 3px rgba(0,0,0,0.1);">
+    <tr>
+      <td style="padding: 24px 32px; background-color: #111827; text-align: center;">
+        <h2 style="margin: 0; color: #ffffff; font-size: 20px; font-weight: 700; letter-spacing: 0.5px;">Login Sports Academy</h2>
+      </td>
+    </tr>
+    <tr>
+      <td style="padding: 32px 32px 24px 32px;">
+        <p style="margin: 0 0 16px 0; font-size: 16px; line-height: 1.5; color: #374151;">Hello,</p>
+        <p style="margin: 0 0 24px 0; font-size: 16px; line-height: 1.5; color: #4b5563;">You requested a verification OTP to retrieve or reset your admin login password. Please use the following code to proceed:</p>
+        
+        <table align="center" border="0" cellpadding="0" cellspacing="0" width="100%">
+          <tr>
+            <td align="center" style="padding: 16px; background-color: #f3f4f6; border-radius: 6px;">
+              <span style="font-family: Monaco, Consolas, 'Courier New', monospace; font-size: 32px; font-weight: bold; letter-spacing: 6px; color: #2563eb; display: inline-block; padding-left: 6px;">${otp}</span>
+            </td>
+          </tr>
+        </table>
+
+        <p style="margin: 24px 0 0 0; font-size: 14px; line-height: 1.5; color: #ef4444; font-weight: 500;">
+          Note: This code will expire in 10 minutes. For security reasons, do not share it with anyone.
+        </p>
+      </td>
+    </tr>
+    <tr>
+      <td style="padding: 24px 32px; background-color: #f9fafb; border-top: 1px solid #e5e7eb; text-align: center; font-size: 12px; color: #9ca3af;">
+        <p style="margin: 0 0 4px 0;">This is an automated system email. Please do not reply directly to this message.</p>
+        <p style="margin: 0;">&copy; ${new Date().getFullYear()} Login Sports Academy. All rights reserved.</p>
+      </td>
+    </tr>
+  </table>
+</body>
+</html>`;
+
             await transporter.sendMail({
                 from: `"Login Sports Academy" <${smtpUser}>`,
                 to: normalizedEmail,
-                subject: 'LSA Admin Portal - OTP Verification Code',
-                text: `Your 6-digit OTP verification code is: ${otp}. It will expire in 10 minutes.`,
-                html: `
-                    <div style="font-family: Arial, sans-serif; max-width: 600px; margin: auto; padding: 20px; border: 1px solid #eee; border-radius: 10px;">
-                        <h2 style="color: #00D4FF; text-align: center;">Login Sports Academy</h2>
-                        <h3 style="color: #333; text-align: center;">Admin Portal OTP Verification</h3>
-                        <p style="color: #666; font-size: 16px; line-height: 1.6;">Hello,</p>
-                        <p style="color: #666; font-size: 16px; line-height: 1.6;">You have requested a verification OTP to retrieve/reset your admin login password. Use the code below to complete the action:</p>
-                        <div style="background: #f4f6f9; padding: 15px 30px; text-align: center; border-radius: 8px; margin: 25px 0;">
-                            <span style="font-size: 32px; font-weight: 800; letter-spacing: 5px; color: #0099FF;">${otp}</span>
-                        </div>
-                        <p style="color: #ff3860; font-size: 14px; font-weight: 600;">Note: This OTP is confidential and will expire in 10 minutes. Do not share it with anyone.</p>
-                        <hr style="border: 0; border-top: 1px solid #eee; margin: 30px 0;" />
-                        <p style="color: #999; font-size: 12px; text-align: center;">This is an automated system email. Please do not reply.</p>
-                    </div>
-                `
+                subject: `LSA Admin OTP Code: ${otp}`,
+                text: emailText,
+                html: emailHtml
             })
             console.log(`[OTP FORGOT PASSWORD] Sent email successfully to ${normalizedEmail}`)
         } else {

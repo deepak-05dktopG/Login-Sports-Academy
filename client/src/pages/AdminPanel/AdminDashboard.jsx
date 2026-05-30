@@ -5,7 +5,7 @@
 
 import { useEffect, useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
-import { isAdminAuthenticated } from "../../utils/adminAuth";
+import { isAdminAuthenticated, getLoggedInAdmin } from "../../utils/adminAuth";
 import AdminLayout from "../../components/adminPanel/AdminLayout";
 import api from "../../api/api";
 import Swal from "sweetalert2";
@@ -25,6 +25,8 @@ import { formatHHmmTo12Hour } from "../../utils/dateTime";
 // Admin dashboard — landing page after login, shows navigation cards for all admin features
 const AdminDashboard = () => {
   const navigate = useNavigate();
+  const currentAdmin = getLoggedInAdmin();
+  const superAdmin = currentAdmin?.role === 'superadmin';
 
   useEffect(
   // Redirect to login page if admin session token is missing or expired
@@ -157,14 +159,15 @@ const AdminDashboard = () => {
       color: "#25D366",
       count: "",
     },
-    {
+    // Only super admins see the Admin Setup card
+    ...(superAdmin ? [{
       title: "Admin Setup",
       description: "Manage admin login credentials and roles",
       icon: <FaUserShield />,
       path: "/admin/manage-admins",
       color: "#FFB800",
       count: "",
-    },
+    }] : []),
   ];
 
   return (

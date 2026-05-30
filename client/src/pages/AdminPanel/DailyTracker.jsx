@@ -268,14 +268,42 @@ const DailyTracker = () => {
     setActiveStockItems(activeStockItems.filter((_, i) => i !== idx));
   };
 
-  const saveStockSales = async () => {
+  const saveStockSales = async (action = 'save') => {
     if (!stockModalRow) return;
     setLoading(true);
     try {
-      await updateDailyTrackerEntry(stockModalRow._id, { stockItems: activeStockItems });
+      const updatedStockTotal = activeStockItems.reduce((sum, item) => sum + item.total, 0);
+      const sessionAmt = stockModalRow.sessionAmount !== undefined 
+        ? stockModalRow.sessionAmount 
+        : (Number(stockModalRow.amount) - (stockModalRow.stockTotal || 0));
+      
+      const finalAmt = sessionAmt + updatedStockTotal;
+
+      await updateDailyTrackerEntry(stockModalRow._id, { 
+        stockItems: activeStockItems,
+        amount: finalAmt,
+        sessionAmount: sessionAmt,
+        stockTotal: updatedStockTotal
+      });
       await fetchData();
       setShowStockModal(false);
-      Swal.fire({ title: 'Stock details saved!', icon: 'success', timer: 1500, showConfirmButton: false });
+
+      if (action === 'print') {
+        const payload = {
+          ...stockModalRow,
+          stockItems: activeStockItems,
+          stockTotal: updatedStockTotal,
+          amount: finalAmt,
+          sessionAmount: sessionAmt
+        };
+        setPrintData(payload);
+        setTimeout(() => {
+          window.print();
+          setPrintData(null);
+        }, 400);
+      } else {
+        Swal.fire({ title: 'Stock details saved!', icon: 'success', timer: 1500, showConfirmButton: false });
+      }
     } catch (err) {
       Swal.fire('Error', err?.response?.data?.message || 'Failed to save stock details', 'error');
     } finally {
@@ -594,9 +622,18 @@ const DailyTracker = () => {
     <>
       <style>{`
         @media print {
-          .no-print { display: none !important; }
+          .no-print, .admin-navbar-modern { display: none !important; }
+          body * {
+            visibility: hidden;
+          }
+          .print-only, .print-only * {
+            visibility: visible;
+          }
           .print-only {
             display: block !important;
+            position: absolute;
+            left: 0;
+            top: 0;
             width: 58mm;
             font-family: monospace;
             font-size: 13px;
@@ -1435,7 +1472,8 @@ const DailyTracker = () => {
               {/* Footer Container */}
               <div className="dt-modal-footer">
                 <button type="button" onClick={closeStockDrawer} disabled={loading} style={{ background: '#1e293b', color: '#94a3b8', padding: '10px 24px', borderRadius: 8, border: '1px solid #334155', fontWeight: 700, fontSize: 14, cursor: loading ? 'not-allowed' : 'pointer', transition: 'all 0.15s' }}>Cancel</button>
-                <button type="button" onClick={saveStockSales} disabled={loading} style={{ background: 'linear-gradient(135deg, #00FFD4, #0099FF)', color: '#0f172a', padding: '10px 28px', borderRadius: 8, border: 'none', fontWeight: 900, fontSize: 15, boxShadow: '0 4px 16px rgba(0,255,212,0.25)', cursor: loading ? 'not-allowed' : 'pointer', opacity: loading ? 0.7 : 1 }}>{loading ? 'Saving...' : '💾 Save Stock Details'}</button>
+                <button type="button" onClick={() => saveStockSales('save')} disabled={loading} style={{ background: '#334155', color: '#fff', padding: '10px 24px', borderRadius: 8, border: 'none', fontWeight: 700, fontSize: 14, cursor: loading ? 'not-allowed' : 'pointer', opacity: loading ? 0.7 : 1 }}>💾 Save</button>
+                <button type="button" onClick={() => saveStockSales('print')} disabled={loading} style={{ background: 'linear-gradient(135deg, #00FFD4, #0099FF)', color: '#0f172a', padding: '10px 24px', borderRadius: 8, border: 'none', fontWeight: 900, fontSize: 14, boxShadow: '0 4px 16px rgba(0,255,212,0.25)', cursor: loading ? 'not-allowed' : 'pointer', opacity: loading ? 0.7 : 1 }}>💾 Save & Print</button>
               </div>
             </div>
           </div>
@@ -1716,7 +1754,7 @@ const DailyTracker = () => {
               <div className="dt-modal-footer">
                 <button type="button" onClick={closeModal} disabled={loading} style={{ background: '#f1f5f9', color: '#333', padding: '10px 28px', borderRadius: 7, border: 'none', fontWeight: 700, fontSize: 16, opacity: loading ? 0.7 : 1, cursor: loading ? 'not-allowed' : 'pointer' }}>Cancel</button>
                 <button type="submit" name="action" value="save" disabled={loading} style={{ background: '#2563eb', color: '#fff', padding: '10px 20px', borderRadius: 7, border: 'none', fontWeight: 800, fontSize: 16, letterSpacing: 1, boxShadow: '0 4px 6px -1px #2563eb44', opacity: loading ? 0.7 : 1, cursor: loading ? 'not-allowed' : 'pointer' }}>{loading ? 'Saving...' : 'Save'}</button>
-                {formType === 'Public Order' || formType === 'Order' || formType === '1 Hour Order' ? (
+                {formType === 'Public Order' || formType === 'Order' || formType === '1 Hour Order' || formType === 'Stock' ? (
                   <button type="submit" name="action" value="print" disabled={loading} style={{ background: '#059669', color: '#fff', padding: '10px 20px', borderRadius: 7, border: 'none', fontWeight: 800, fontSize: 16, letterSpacing: 1, boxShadow: '0 4px 6px -1px #05966944', opacity: loading ? 0.7 : 1, cursor: loading ? 'not-allowed' : 'pointer' }}>{loading ? 'Saving...' : 'Save & Print'}</button>
                 ) : ''}
               </div>
@@ -1724,54 +1762,64 @@ const DailyTracker = () => {
           </div>
         )}
         </div>
-
-      {/* Hidden Thermal Printer Container (Compact Layout) */}
-      <div className="print-only">
-        {printData && (
-          <div style={{ width: '100%', padding: '0 4px', boxSizing: 'border-box' }}>
-            <h3 style={{ margin: '0 0 2px 0', fontSize: '15px', textAlign: 'center', fontWeight: '900' }}>LOGIN SPORTS ACADEMY</h3>
-            <p style={{ margin: '0 0 4px 0', textAlign: 'center', fontSize: '11px' }}>loginsportsacademy.in</p>
-
-            <p style={{ margin: '2px 0', textAlign: 'center', fontSize: '12px' }}>----------------------------</p>
-
-            <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '12px', marginBottom: '2px' }}>
-              <span>{printData.date}</span>
-              <span>{formatHHmmTo12Hour(printData.time)}</span>
-            </div>
-
-            <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '12px', marginBottom: '4px' }}>
-              <span style={{ whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis', maxWidth: '70%' }}>
-                <b>{printData.name}</b>
-              </span>
-              <span><b>{printData.paymentType.toUpperCase()}</b></span>
-            </div>
-
-            <p style={{ margin: '2px 0', textAlign: 'center', fontSize: '12px' }}>----------------------------</p>
-
-            {printData.stockItems && printData.stockItems.length > 0 ? (
-              <>
-                <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '12px', margin: '2px 0' }}>
-                  <span>{printData.type === '1 Hour Order' ? `Entry(1Hr) x${printData.headsCount || 1}` : (printData.type === 'Public Order' || printData.type === 'Order' ? 'Entry(1Hr)' : printData.type)}</span>
-                  <span>₹ {printData.sessionAmount !== undefined ? printData.sessionAmount : (printData.amount - (printData.stockTotal || 0))}</span>
-                </div>
-                {printData.stockItems.map((item, i) => (
-                  <div key={i} style={{ display: 'flex', justifyContent: 'space-between', fontSize: '12px', margin: '2px 0' }}>
-                    <span>{item.name} (x{item.quantity})</span>
-                    <span>₹ {item.total}</span>
-                  </div>
-                ))}
-                <p style={{ margin: '2px 0', textAlign: 'center', fontSize: '12px' }}>----------------------------</p>
-                <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '13px', fontWeight: 'bold', margin: '4px 0' }}>
-                  <span>GRAND TOTAL</span>
-                  <span>₹ {printData.amount}</span>
-                </div>
-              </>
-            ) : (
-              <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '13px', fontWeight: 'bold', margin: '4px 0' }}>
-                <span>{printData.type === '1 Hour Order' ? `Entry(1Hr) x${printData.headsCount || 1}` : (printData.type === 'Public Order' || printData.type === 'Order' ? 'Entry(1Hr)' : printData.type)}</span>
-                <span>₹ {printData.amount}</span>
-              </div>
-            )}
+ 
+       {/* Hidden Thermal Printer Container (Compact Layout) */}
+       <div className="print-only">
+         {printData && (
+           <div style={{ width: '100%', padding: '0 4px', boxSizing: 'border-box' }}>
+             <h3 style={{ margin: '0 0 2px 0', fontSize: '15px', textAlign: 'center', fontWeight: '900' }}>LOGIN SPORTS ACADEMY</h3>
+             <p style={{ margin: '0 0 4px 0', textAlign: 'center', fontSize: '11px' }}>loginsportsacademy.in</p>
+ 
+             <p style={{ margin: '2px 0', textAlign: 'center', fontSize: '12px' }}>----------------------------</p>
+ 
+             <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '12px', marginBottom: '2px' }}>
+               <span>{printData.date}</span>
+               <span>{formatHHmmTo12Hour(printData.time)}</span>
+             </div>
+ 
+             <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '12px', marginBottom: '4px' }}>
+               <span style={{ whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis', maxWidth: '70%' }}>
+                 <b>{printData.name}</b>
+               </span>
+               <span><b>{(printData.paymentType || '').toUpperCase()}</b></span>
+             </div>
+ 
+             <p style={{ margin: '2px 0', textAlign: 'center', fontSize: '12px' }}>----------------------------</p>
+ 
+             {printData.stockItems && printData.stockItems.length > 0 ? (
+               <>
+                 {(() => {
+                   const sessionAmt = printData.sessionAmount !== undefined 
+                     ? printData.sessionAmount 
+                     : (printData.amount - (printData.stockTotal || 0));
+                   if (sessionAmt > 0) {
+                     return (
+                       <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '12px', margin: '2px 0' }}>
+                         <span>{printData.type === '1 Hour Order' ? `Entry(1Hr) x${printData.headsCount || 1}` : (printData.type === 'Public Order' || printData.type === 'Order' ? 'Entry(1Hr)' : printData.type)}</span>
+                         <span>₹ {sessionAmt}</span>
+                       </div>
+                     );
+                   }
+                   return null;
+                 })()}
+                 {printData.stockItems.map((item, i) => (
+                   <div key={i} style={{ display: 'flex', justifyContent: 'space-between', fontSize: '12px', margin: '2px 0' }}>
+                     <span>{item.name} (x{item.quantity})</span>
+                     <span>₹ {item.total}</span>
+                   </div>
+                 ))}
+                 <p style={{ margin: '2px 0', textAlign: 'center', fontSize: '12px' }}>----------------------------</p>
+                 <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '13px', fontWeight: 'bold', margin: '4px 0' }}>
+                   <span>GRAND TOTAL</span>
+                   <span>₹ {printData.amount}</span>
+                 </div>
+               </>
+             ) : (
+               <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '13px', fontWeight: 'bold', margin: '4px 0' }}>
+                 <span>{printData.type === '1 Hour Order' ? `Entry(1Hr) x${printData.headsCount || 1}` : (printData.type === 'Public Order' || printData.type === 'Order' ? 'Entry(1Hr)' : printData.type)}</span>
+                 <span>₹ {printData.amount}</span>
+               </div>
+             )}
 
             <p style={{ margin: '2px 0', textAlign: 'center', fontSize: '12px' }}>----------------------------</p>
             <p style={{ margin: '4px 0 0 0', textAlign: 'center', fontSize: '12px', fontWeight: 'bold' }}>Thank You!</p>
