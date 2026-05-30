@@ -301,24 +301,7 @@ export const forgotPasswordRequest = asyncHandler(async (req, res) => {
     console.log(`======================================================\n`)
 
     // Send email using nodemailer
-    try {
-        const smtpHost = process.env.SMTP_HOST
-        const smtpPort = process.env.SMTP_PORT || 587
-        const smtpUser = process.env.SMTP_USER || process.env.EMAIL_USER
-        const smtpPass = process.env.SMTP_PASS || process.env.EMAIL_PASS
-
-        if (smtpUser && smtpPass) {
-            const transporter = nodemailer.createTransport({
-                host: smtpHost || 'smtp.gmail.com',
-                port: Number(smtpPort),
-                secure: Number(smtpPort) === 465,
-                auth: {
-                    user: smtpUser,
-                    pass: smtpPass
-                }
-            })
-
-            const emailText = `Hello,
+    const emailText = `Hello,
 
 You requested a 6-digit OTP verification code to retrieve/reset your Login Sports Academy admin password.
 
@@ -329,7 +312,7 @@ This code will expire in 10 minutes. For security, please do not share this code
 Best regards,
 Login Sports Academy Support`;
 
-            const emailHtml = `<!DOCTYPE html>
+    const emailHtml = `<!DOCTYPE html>
 <html>
 <head>
   <meta charset="utf-8">
@@ -370,6 +353,94 @@ Login Sports Academy Support`;
 </body>
 </html>`;
 
+    // Send email using Resend API or SMTP
+    try {
+        const resendApiKey = process.env.RESEND_API_KEY
+        const brevoApiKey = process.env.BREVO_API_KEY
+        const sendgridApiKey = process.env.SENDGRID_API_KEY
+        const smtpHost = process.env.SMTP_HOST
+        const smtpPort = process.env.SMTP_PORT || 587
+        const smtpUser = process.env.SMTP_USER || process.env.EMAIL_USER
+        const smtpPass = process.env.SMTP_PASS || process.env.EMAIL_PASS
+
+        if (brevoApiKey) {
+            // Send via Brevo HTTP API (Port 443 — not blocked by Render)
+            const axios = (await import('axios')).default;
+            const senderEmail = process.env.BREVO_FROM_EMAIL || smtpUser || 'loginsportsacadamy@gmail.com';
+            
+            await axios.post('https://api.brevo.com/v3/smtp/email', {
+                sender: {
+                    name: 'Login Sports Academy',
+                    email: senderEmail
+                },
+                to: [
+                    { email: normalizedEmail }
+                ],
+                subject: `LSA Admin OTP Code: ${otp}`,
+                htmlContent: emailHtml,
+                textContent: emailText
+            }, {
+                headers: {
+                    'api-key': brevoApiKey,
+                    'Content-Type': 'application/json'
+                }
+            });
+            console.log(`[OTP FORGOT PASSWORD] Sent email via Brevo API successfully to ${normalizedEmail}`)
+        } else if (sendgridApiKey) {
+            // Send via SendGrid HTTP API (Port 443 — not blocked by Render)
+            const axios = (await import('axios')).default;
+            const senderEmail = process.env.SENDGRID_FROM_EMAIL || smtpUser || 'loginsportsacadamy@gmail.com';
+            
+            await axios.post('https://api.sendgrid.com/v3/mail/send', {
+                personalizations: [
+                    { to: [{ email: normalizedEmail }] }
+                ],
+                from: {
+                    email: senderEmail,
+                    name: 'Login Sports Academy'
+                },
+                subject: `LSA Admin OTP Code: ${otp}`,
+                content: [
+                    { type: 'text/plain', value: emailText },
+                    { type: 'text/html', value: emailHtml }
+                ]
+            }, {
+                headers: {
+                    'Authorization': `Bearer ${sendgridApiKey}`,
+                    'Content-Type': 'application/json'
+                }
+            });
+            console.log(`[OTP FORGOT PASSWORD] Sent email via SendGrid API successfully to ${normalizedEmail}`)
+        } else if (resendApiKey) {
+            // Send via Resend HTTP API (Port 443 — not blocked by Render)
+            const axios = (await import('axios')).default;
+            const fromEmail = process.env.RESEND_FROM_EMAIL || 'onboarding@resend.dev';
+            
+            await axios.post('https://api.resend.com/emails', {
+                from: `Login Sports Academy <${fromEmail}>`,
+                to: normalizedEmail,
+                subject: `LSA Admin OTP Code: ${otp}`,
+                html: emailHtml,
+                text: emailText
+            }, {
+                headers: {
+                    'Authorization': `Bearer ${resendApiKey}`,
+                    'Content-Type': 'application/json'
+                }
+            });
+            console.log(`[OTP FORGOT PASSWORD] Sent email via Resend API successfully to ${normalizedEmail}`)
+        } else if (smtpUser && smtpPass) {
+            // Send via SMTP
+            const transporter = nodemailer.createTransport({
+                host: smtpHost || 'smtp.gmail.com',
+                port: Number(smtpPort),
+                secure: Number(smtpPort) === 465,
+                auth: {
+                    user: smtpUser,
+                    pass: smtpPass
+                }
+            })
+
             await transporter.sendMail({
                 from: `"Login Sports Academy" <${smtpUser}>`,
                 to: normalizedEmail,
@@ -377,9 +448,9 @@ Login Sports Academy Support`;
                 text: emailText,
                 html: emailHtml
             })
-            console.log(`[OTP FORGOT PASSWORD] Sent email successfully to ${normalizedEmail}`)
+            console.log(`[OTP FORGOT PASSWORD] Sent email via SMTP successfully to ${normalizedEmail}`)
         } else {
-            console.warn(`[OTP FORGOT PASSWORD] SMTP credentials are not configured in server/.env. OTP printed to server log above.`)
+            console.warn(`[OTP FORGOT PASSWORD] No email configuration (Brevo, SendGrid, Resend, or SMTP) was found. OTP printed to server log above.`)
         }
     } catch (err) {
         console.error(`[OTP FORGOT PASSWORD] Failed to send email:`, err)

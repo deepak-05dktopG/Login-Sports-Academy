@@ -543,10 +543,29 @@ const AdminLogin = () => {
                 <h3 style={{ color: "#fff", fontSize: "1.5rem", fontWeight: 800, margin: "0 0 10px 0" }}>
                   Verification Required
                 </h3>
-                <p style={{ color: "rgba(255,255,255,0.6)", fontSize: "0.95rem", lineHeight: 1.5, marginBottom: "30px" }}>
+                <p style={{ color: "rgba(255,255,255,0.6)", fontSize: "0.95rem", lineHeight: 1.5, marginBottom: "15px" }}>
                   A security code was sent to <strong style={{ color: "#00FFD4" }}>{emailInput}</strong>.<br />
                   Please enter the 6-digit OTP below to decrypt and retrieve your password.
                 </p>
+                <div style={{
+                  color: "#FFB800",
+                  background: "rgba(255,184,0,0.08)",
+                  border: "1px solid rgba(255,184,0,0.2)",
+                  borderRadius: "12px",
+                  padding: "10px 14px",
+                  fontSize: "0.85rem",
+                  marginBottom: "25px",
+                  lineHeight: "1.4",
+                  display: "inline-flex",
+                  alignItems: "center",
+                  gap: "8px",
+                  textAlign: "left",
+                  boxSizing: "border-box",
+                  width: "100%"
+                }}>
+                  <span>💡</span>
+                  <span>Can't find the email? Please **check your Spam or Junk folder** as well!</span>
+                </div>
 
                 <form onSubmit={handleVerifyOtp}>
                   <input
