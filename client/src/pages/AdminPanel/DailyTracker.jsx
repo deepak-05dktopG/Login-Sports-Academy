@@ -160,25 +160,14 @@ const DailyTracker = () => {
   const [formHeadsCount, setFormHeadsCount] = useState(1);
 
   const getContextualStocks = (type) => {
-    if (type === '1 Hour Order') {
-      return stockCatalog
-        .filter(item => item.stockType === 'rental')
-        .map(item => ({
-          name: item.planName,
-          price: item.basePrice || 0,
-          count: item.stockCount !== undefined ? item.stockCount : 0,
-          isRental: true
-        }));
-    } else {
-      return stockCatalog
-        .filter(item => item.stockType === 'buying')
-        .map(item => ({
-          name: item.planName,
-          price: item.basePrice || 0,
-          count: item.stockCount !== undefined ? item.stockCount : 0,
-          isRental: false
-        }));
-    }
+    // Show all active stock items regardless of stockType
+    // so everything added in ManagePlans appears in the daily entry modal
+    return stockCatalog.map(item => ({
+      name: item.planName,
+      price: item.basePrice || 0,
+      count: item.stockCount !== undefined ? item.stockCount : 0,
+      isRental: item.stockType === 'rental',
+    }));
   };
 
   // Inline Stock selections states in creation form
@@ -296,11 +285,14 @@ const DailyTracker = () => {
 
   const fetchPlans = async () => {
     try {
-      const { data } = await api.get('/membership/plans?isActive=true');
+      // Fetch all plans (no isActive filter) so newly added stocks always appear
+      const { data } = await api.get('/membership/plans');
+      console.log('[DailyTracker] fetchPlans response:', data);
       if (data.success) {
          const nonStockPlans = data.data.filter(p => p.type !== 'stock');
-         setMembershipPlans(nonStockPlans.map(p => p.planName));
+         setMembershipPlans(nonStockPlans.filter(p => p.isActive !== false).map(p => p.planName));
          const stockPlans = data.data.filter(p => p.type === 'stock');
+         console.log('[DailyTracker] stockCatalog set to:', stockPlans);
          setStockCatalog(stockPlans);
       }
     } catch (err) {
@@ -385,8 +377,8 @@ const DailyTracker = () => {
     setFormStockPreset('');
     setFormCustomName('');
     setFormCustomPrice('');
-    setFormHeadsCount(1);
-    setFormAmount(initialType === '1 Hour Order' ? '100' : (row?.amount || ''));
+    setFormHeadsCount(row?.headsCount ?? '');
+    setFormAmount(row?.amount || '');
     setShowModal(true);
   };
   const closeModal = () => {
@@ -1489,8 +1481,9 @@ const DailyTracker = () => {
                         setFormType(selectedType);
                         const stockTotal = formStockItems.reduce((sum, item) => sum + item.total, 0);
                         if (selectedType === '1 Hour Order') {
-                          setFormHeadsCount(1);
-                          setFormAmount(String(100 + stockTotal));
+                          // No default heads count; user will input manually
+                          setFormHeadsCount('');
+                          setFormAmount(stockTotal > 0 ? String(stockTotal) : '');
                         } else {
                           setFormAmount(stockTotal > 0 ? String(stockTotal) : '');
                         }
@@ -1515,12 +1508,17 @@ const DailyTracker = () => {
                     {formType === '1 Hour Order' ? (
                       <div style={{ flex: 1 }}>
                         <label style={{ fontWeight: 700, color: '#1e293b', marginBottom: 4 }}>Heads / Customer Count <span style={{ color: '#ef4444' }}>*</span></label>
-                        <input name="headsCount" type="number" min="1" step="1" value={formHeadsCount} onChange={e => {
-                          const hc = Math.max(1, parseInt(e.target.value) || 1);
+                        <input name="headsCount" type="number" min="0" step="1" value={formHeadsCount} onChange={e => {
+                          const val = e.target.value;
+                          const hc = val ? Math.max(1, parseInt(val)) : '';
                           setFormHeadsCount(hc);
                           const stockTotal = formStockItems.reduce((sum, item) => sum + item.total, 0);
-                          setFormAmount(String((hc * 100) + stockTotal));
+                          setFormAmount(val ? String((hc * 100) + stockTotal) : String(stockTotal));
                         }} required style={{ width: '100%', padding: 8, borderRadius: 6, border: '1px solid #cbd5e1', fontSize: 15 }} />
+                        <div style={{ marginTop: 10, padding: '10px 14px', background: 'linear-gradient(135deg, #1e3a5f, #0d2137)', borderRadius: 8, border: '1px solid #2563eb', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                          <span style={{ fontWeight: 700, fontSize: 13, color: '#93c5fd' }}>Total Amount</span>
+                          <span style={{ fontWeight: 900, fontSize: 20, color: '#00FFD4' }}>₹{(Number(formAmount) || 0).toLocaleString('en-IN')}</span>
+                        </div>
                       </div>
                     ) : (
                       <div style={{ flex: 1 }}>
