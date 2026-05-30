@@ -10,7 +10,7 @@ import connectDB from './config/db.js'
 import apiRoutes from './routes/api.js'
  
 // Connect to database
-connectDB()
+connectDB() 
 
 const app = express()
  

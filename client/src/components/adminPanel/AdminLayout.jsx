@@ -8,6 +8,7 @@ import AdminNavbar from './AdminNavbar'
 const AdminLayout = ({ children, showNavbar = true, style = {} }) => {
     return (
         <div
+            className="admin-layout-wrapper"
             style={{
                 minHeight: '100vh',
                 background: '#03050A',
@@ -22,7 +23,7 @@ const AdminLayout = ({ children, showNavbar = true, style = {} }) => {
             <div className="no-print" style={{ position: 'fixed', bottom: '-10%', right: '-10%', width: '50%', height: '50%', background: 'radial-gradient(circle, rgba(255,184,0,0.05) 0%, transparent 70%)', filter: 'blur(100px)', zIndex: 0 }} />
             <div className="no-print" style={{ position: 'fixed', top: '0', left: '0', right: '0', bottom: '0', backgroundImage: 'linear-gradient(rgba(255, 255, 255, 0.015) 1px, transparent 1px), linear-gradient(90deg, rgba(255, 255, 255, 0.015) 1px, transparent 1px)', backgroundSize: '50px 50px', zIndex: 0 }} />
 
-            <div style={{ position: 'relative', zIndex: 10 }}>
+            <div className="admin-layout-content" style={{ position: 'relative', zIndex: 10 }}>
                 {showNavbar && <div className="no-print"><AdminNavbar /></div>}
                 {children}
             </div>

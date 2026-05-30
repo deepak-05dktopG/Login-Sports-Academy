@@ -87,18 +87,7 @@ const AdminNavbar = () => {
 						alt="Login Sports Academy Logo"
 						style={{ height: '40px', width: 'auto', filter: 'drop-shadow(0 0 8px rgba(0, 255, 212, 0.3))' }}
 					/>
-					<h1
-						style={{
-							margin: 0,
-							fontSize: 'clamp(1.05rem, 3.2vw, 1.5rem)',
-							fontWeight: 700,
-							background: 'linear-gradient(135deg, #00FFD4 0%, #0099FF 100%)',
-							WebkitBackgroundClip: 'text',
-							WebkitTextFillColor: 'transparent',
-						}}
-					>
-						Login Sports Academy Admin
-					</h1>
+					
 				</Link>
 
 				<div className="admin-navbar__links" style={{ display: 'flex', gap: '10px', alignItems: 'center', flexWrap: 'wrap' }}>

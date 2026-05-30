@@ -95,6 +95,16 @@ function SuperAdminRoute({ children }) {
 
 function App() {
   const appLocation = useLocation()
+
+  // Hide chatbot in admin views dynamically by adding a class to body
+  React.useEffect(() => {
+    if (appLocation.pathname.startsWith('/admin')) {
+      document.body.classList.add('hide-chatbot')
+    } else {
+      document.body.classList.remove('hide-chatbot')
+    }
+  }, [appLocation.pathname])
+
   // Conditionally renders the Footer only on public pages (not admin routes)
   function FooterMaybe() {
     const location = useLocation()

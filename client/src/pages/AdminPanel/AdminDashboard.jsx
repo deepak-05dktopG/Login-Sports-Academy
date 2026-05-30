@@ -191,7 +191,7 @@ const AdminDashboard = () => {
                     letterSpacing: "-1px"
                   }}
                 >
-                  Command <span style={{ color: "#00D4FF" }}>Center</span>
+                  Admin <span style={{ color: "#00D4FF" }}>Portal</span>
                 </h1>
                 <p style={{ color: "rgba(255, 255, 255, 0.5)", fontSize: "1.1rem", margin: "5px 0 0 0" }}>
                   Login Sports Academy Management Dashboard

@@ -206,7 +206,7 @@ const MembersFeedback = () => {
 
   return (
     <AdminLayout>
-      <div style={{ padding: "0 40px 60px 40px", maxWidth: "1400px", margin: "0 auto" }}>
+      <div className="admin-page-container">
         {/* Header */}
         <div style={{ marginBottom: "30px" }}>
           <h1 style={{ color: "#fff", fontSize: "2.5rem", fontWeight: "700", marginBottom: "10px" }}>
@@ -282,7 +282,7 @@ const MembersFeedback = () => {
           </div>
         )}
 
-        <div style={{ display: "grid", gap: "20px" }}>
+        <div style={{ display: "flex", flexDirection: "column", gap: "20px", width: "100%" }}>
           {filteredFeedback.map(/**
            * Render each feedback message as a card.
            * Unread messages are visually highlighted to help triage.
@@ -291,14 +291,7 @@ const MembersFeedback = () => {
             return (
               <div
                 key={fb._id}
-                style={{
-                  background: fb.status === "unread" ? "rgba(255, 107, 107, 0.1)" : "rgba(255, 255, 255, 0.05)",
-                  border: `2px solid ${fb.status === "unread" ? "#FF6B6B" : "rgba(255, 255, 255, 0.1)"}`,
-                  borderRadius: "15px",
-                  padding: "25px",
-                  transition: "all 0.3s ease",
-                  position: "relative",
-                }}
+                className={fb.status === "unread" ? "feedback-card unread" : "feedback-card"}
                 onMouseEnter={/**
                  * Small hover lift so cards feel interactive.
                  */
@@ -314,65 +307,64 @@ const MembersFeedback = () => {
                   e.currentTarget.style.boxShadow = "none";
                 }}
               >
-                {/* Status Badge */}
-                <div
-                  style={{
-                    position: "absolute",
-                    top: "15px",
-                    right: "15px",
-                    background: fb.status === "unread" ? "#FF6B6B" : fb.status === "read" ? "#4ECDC4" : "#667eea",
-                    color: "#fff",
-                    padding: "5px 12px",
-                    borderRadius: "20px",
-                    fontSize: "0.75rem",
-                    fontWeight: "600",
-                    textTransform: "uppercase",
-                  }}
-                >
-                  {fb.status}
-                </div>
-                {/* User Info */}
-                <div style={{ display: "flex", alignItems: "center", gap: "15px", marginBottom: "15px" }}>
-                  <div style={{ width: "50px", height: "50px", borderRadius: "50%", background: "linear-gradient(135deg, #667eea, #4ECDC4)", display: "flex", alignItems: "center", justifyContent: "center", color: "#fff", fontSize: "1.3rem", fontWeight: "700" }}>
-                    {fb.name.charAt(0).toUpperCase()}
+                {/* Card Header (Avatar + Info + Status) */}
+                <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", gap: "15px", flexWrap: "wrap", marginBottom: "15px", width: "100%", minWidth: 0 }}>
+                  <div style={{ display: "flex", alignItems: "center", gap: "15px", flexWrap: "wrap", flex: 1, minWidth: 0 }}>
+                    <div style={{ width: "50px", height: "50px", borderRadius: "50%", background: "linear-gradient(135deg, #667eea, #4ECDC4)", display: "flex", alignItems: "center", justifyContent: "center", color: "#fff", fontSize: "1.3rem", fontWeight: "700", flexShrink: 0 }}>
+                      {fb.name.charAt(0).toUpperCase()}
+                    </div>
+                    <div style={{ flex: 1, minWidth: 0 }}>
+                      <div style={{ color: "#fff", fontSize: "1.1rem", fontWeight: "600", display: "flex", alignItems: "center", gap: "8px", flexWrap: "wrap", wordBreak: "break-all" }}>
+                        <FaUser style={{ color: "#4ECDC4", fontSize: "0.9rem" }} />
+                        {fb.name}
+                      </div>
+                      <div style={{ fontSize: "0.85rem", display: "flex", alignItems: "center", gap: "8px", marginTop: "5px", flexWrap: "wrap", wordBreak: "break-all" }}>
+                        <FaEnvelope style={{ color: "#FFD93D" }} />
+                        <a href={`mailto:${fb.email}`} style={{ color: "#b0b0b0", textDecoration: "none", transition: "color 0.3s ease" }} onMouseEnter={/**
+                         * Visual cue: highlight the email link on hover.
+                         */
+                        e => {
+                          return e.currentTarget.style.color = "#FFD93D";
+                        }} onMouseLeave={/**
+                         * Restore default color on mouse out.
+                         */
+                        e => {
+                          return e.currentTarget.style.color = "#b0b0b0";
+                        }}>
+                          {fb.email}
+                        </a>
+                      </div>
+                      <div style={{ fontSize: "0.85rem", display: "flex", alignItems: "center", gap: "8px", marginTop: "5px", flexWrap: "wrap", wordBreak: "break-all" }}>
+                        <FaPhone style={{ color: "#FF6B6B" }} />
+                        <a href={`tel:${fb.phone}`} style={{ color: "#b0b0b0", textDecoration: "none", transition: "color 0.3s ease" }} onMouseEnter={/**
+                         * Visual cue: highlight the phone link on hover.
+                         */
+                        e => {
+                          return e.currentTarget.style.color = "#FF6B6B";
+                        }} onMouseLeave={/**
+                         * Restore default color on mouse out.
+                         */
+                        e => {
+                          return e.currentTarget.style.color = "#b0b0b0";
+                        }}>
+                          {fb.phone}
+                        </a>
+                      </div>
+                    </div>
                   </div>
-                  <div>
-                    <div style={{ color: "#fff", fontSize: "1.1rem", fontWeight: "600", display: "flex", alignItems: "center", gap: "8px" }}>
-                      <FaUser style={{ color: "#4ECDC4", fontSize: "0.9rem" }} />
-                      {fb.name}
-                    </div>
-                    <div style={{ fontSize: "0.85rem", display: "flex", alignItems: "center", gap: "8px", marginTop: "5px" }}>
-                      <FaEnvelope style={{ color: "#FFD93D" }} />
-                      <a href={`mailto:${fb.email}`} style={{ color: "#b0b0b0", textDecoration: "none", transition: "color 0.3s ease" }} onMouseEnter={/**
-                       * Visual cue: highlight the email link on hover.
-                       */
-                      e => {
-                        return e.currentTarget.style.color = "#FFD93D";
-                      }} onMouseLeave={/**
-                       * Restore default color on mouse out.
-                       */
-                      e => {
-                        return e.currentTarget.style.color = "#b0b0b0";
-                      }}>
-                        {fb.email}
-                      </a>
-                    </div>
-                    <div style={{ fontSize: "0.85rem", display: "flex", alignItems: "center", gap: "8px", marginTop: "5px" }}>
-                      <FaPhone style={{ color: "#FF6B6B" }} />
-                      <a href={`tel:${fb.phone}`} style={{ color: "#b0b0b0", textDecoration: "none", transition: "color 0.3s ease" }} onMouseEnter={/**
-                       * Visual cue: highlight the phone link on hover.
-                       */
-                      e => {
-                        return e.currentTarget.style.color = "#FF6B6B";
-                      }} onMouseLeave={/**
-                       * Restore default color on mouse out.
-                       */
-                      e => {
-                        return e.currentTarget.style.color = "#b0b0b0";
-                      }}>
-                        {fb.phone}
-                      </a>
-                    </div>
+                  {/* Status Badge */}
+                  <div
+                    style={{
+                      background: fb.status === "unread" ? "#FF6B6B" : fb.status === "read" ? "#4ECDC4" : "#667eea",
+                      color: "#fff",
+                      padding: "5px 12px",
+                      borderRadius: "20px",
+                      fontSize: "0.75rem",
+                      fontWeight: "600",
+                      textTransform: "uppercase",
+                    }}
+                  >
+                    {fb.status}
                   </div>
                 </div>
                 {/* Message */}

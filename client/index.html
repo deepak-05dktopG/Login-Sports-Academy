@@ -389,6 +389,13 @@
         background: rgba(0,212,255,0.3);
         border-radius: 10px;
       }
+
+      /* Hide n8n Chat Widget on Admin pages */
+      body.hide-chatbot #n8n-chat-container,
+      body.hide-chatbot [class^="n8n-chat"],
+      body.hide-chatbot [class*=" n8n-chat"] {
+        display: none !important;
+      }
     </style>
   </body>
 </html>

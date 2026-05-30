@@ -112,23 +112,40 @@ const computeOfflinePricing = subtotalInr => {
 	}
 };
 
-// Throws if RAZORPAY_KEY_ID/RAZORPAY_KEY_SECRET env vars are missing
-const requireRazorpayConfig = () => {
-	// IMPORTANT: do not initialize Razorpay client at import-time.
-	// In ESM, controllers can be evaluated before dotenv.config() runs.
-	if (!process.env.RAZORPAY_KEY_ID || !process.env.RAZORPAY_KEY_SECRET) {
-		const err = new Error('Razorpay is not configured (missing RAZORPAY_KEY_ID/RAZORPAY_KEY_SECRET)')
+// Resolves the Razorpay credentials for a specific service type (swimming vs badminton)
+const getRazorpayConfig = (serviceType) => {
+	let keyId = process.env.RAZORPAY_KEY_ID
+	let keySecret = process.env.RAZORPAY_KEY_SECRET
+
+	if (serviceType === 'badminton') {
+		keyId = process.env.RAZORPAY_KEY_ID_BADMINTON || keyId
+		keySecret = process.env.RAZORPAY_KEY_SECRET_BADMINTON || keySecret
+	} else {
+		// Default to swimming or fallback to generic keys
+		keyId = process.env.RAZORPAY_KEY_ID_SWIMMING || keyId
+		keySecret = process.env.RAZORPAY_KEY_SECRET_SWIMMING || keySecret
+	}
+
+	return { keyId, keySecret }
+}
+
+// Throws if Razorpay config is missing for a service type
+const requireRazorpayConfig = (serviceType) => {
+	const { keyId, keySecret } = getRazorpayConfig(serviceType)
+	if (!keyId || !keySecret) {
+		const err = new Error(`Razorpay is not configured (missing key credentials for ${serviceType || 'default'})`)
 		err.statusCode = 500
 		throw err
 	}
 };
 
-// Creates a new Razorpay SDK client instance using env credentials
-const getRazorpayClient = () => {
-	requireRazorpayConfig()
+// Creates a new Razorpay SDK client instance using resolved credentials
+const getRazorpayClient = (serviceType) => {
+	requireRazorpayConfig(serviceType)
+	const { keyId, keySecret } = getRazorpayConfig(serviceType)
 	return new Razorpay({
-		key_id: process.env.RAZORPAY_KEY_ID,
-		key_secret: process.env.RAZORPAY_KEY_SECRET,
+		key_id: keyId,
+		key_secret: keySecret,
 	})
 };
 
@@ -1277,8 +1294,6 @@ export const registerOfflineMembership = asyncHandler(async (req, res) => {
 
 // Creates a Razorpay order for a selected plan and stores the pending payment in the database
 export const createRazorpayOrder = asyncHandler(async (req, res) => {
-	const razorpay = getRazorpayClient()
-
 	const { planId, member, selection, familyMembers } = req.body
 	if (!planId) return res.status(400).json({ success: false, message: 'planId is required' })
 
@@ -1286,6 +1301,10 @@ export const createRazorpayOrder = asyncHandler(async (req, res) => {
 	if (!plan || plan.isActive === false) {
 		return res.status(404).json({ success: false, message: 'Plan not found' })
 	}
+
+	const serviceType = plan.serviceType || 'swimming'
+	const razorpay = getRazorpayClient(serviceType)
+	const { keyId } = getRazorpayConfig(serviceType)
 
 	const draftRes = prepareMembershipDraft({ plan, member, selection, familyMembers })
 	if (!draftRes.ok) return res.status(400).json({ success: false, message: draftRes.message })
@@ -1337,7 +1356,7 @@ export const createRazorpayOrder = asyncHandler(async (req, res) => {
 	res.status(201).json({
 		success: true,
 		data: {
-			keyId: process.env.RAZORPAY_KEY_ID,
+			keyId,
 			orderId: order.id,
 			amountPaise,
 			currency: 'INR',
@@ -1349,8 +1368,6 @@ export const createRazorpayOrder = asyncHandler(async (req, res) => {
 
 // Verifies Razorpay payment signature, confirms capture, and creates member records on success
 export const verifyRazorpayPayment = asyncHandler(async (req, res) => {
-	const razorpay = getRazorpayClient()
-
 	const {
 		razorpay_order_id: providerOrderId,
 		razorpay_payment_id: providerPaymentId,
@@ -1361,15 +1378,24 @@ export const verifyRazorpayPayment = asyncHandler(async (req, res) => {
 		return res.status(400).json({ success: false, message: 'Missing Razorpay verification fields' })
 	}
 
+	const paymentDoc = await Payment.findOne({ providerOrderId })
+	if (!paymentDoc) return res.status(404).json({ success: false, message: 'Local payment not found' })
+
+	const plan = await MembershipPlan.findById(paymentDoc.planId)
+	const serviceType = plan ? plan.serviceType : 'swimming'
+	const { keySecret } = getRazorpayConfig(serviceType)
+
 	const signBody = `${providerOrderId}|${providerPaymentId}`
 	const expectedSignature = crypto
-		.createHmac('sha256', process.env.RAZORPAY_KEY_SECRET)
+		.createHmac('sha256', keySecret)
 		.update(signBody)
 		.digest('hex')
 
 	if (expectedSignature !== providerSignature) {
 		return res.status(400).json({ success: false, message: 'Invalid payment signature' })
 	}
+
+	const razorpay = getRazorpayClient(serviceType)
 
 	const paymentInfo = await razorpay.payments.fetch(providerPaymentId)
 	if (!paymentInfo) return res.status(400).json({ success: false, message: 'Payment not found on Razorpay' })
@@ -1379,9 +1405,6 @@ export const verifyRazorpayPayment = asyncHandler(async (req, res) => {
 	if (paymentInfo.status !== 'captured') {
 		return res.status(409).json({ success: false, message: `Payment not captured yet (${paymentInfo.status})` })
 	}
-
-	const paymentDoc = await Payment.findOne({ providerOrderId })
-	if (!paymentDoc) return res.status(404).json({ success: false, message: 'Local payment not found' })
 
 	const expectedPaise = toPaise(paymentDoc.amount)
 	if (!expectedPaise || Number(paymentInfo.amount) !== expectedPaise) {
@@ -1427,7 +1450,28 @@ export const verifyRazorpayPayment = asyncHandler(async (req, res) => {
 
 // Handles Razorpay webhook events (payment.captured) to finalize payments server-side
 export const razorpayWebhook = asyncHandler(async (req, res) => {
-	const webhookSecret = process.env.RAZORPAY_WEBHOOK_SECRET
+	const event = req.body
+	const entity = event?.payload?.payment?.entity
+	const providerOrderId = entity?.order_id
+
+	let serviceType = 'swimming' // default fallback
+	if (providerOrderId) {
+		const paymentDoc = await Payment.findOne({ providerOrderId })
+		if (paymentDoc) {
+			const plan = await MembershipPlan.findById(paymentDoc.planId)
+			if (plan) {
+				serviceType = plan.serviceType || 'swimming'
+			}
+		}
+	}
+
+	let webhookSecret = process.env.RAZORPAY_WEBHOOK_SECRET
+	if (serviceType === 'badminton') {
+		webhookSecret = process.env.RAZORPAY_WEBHOOK_SECRET_BADMINTON || webhookSecret
+	} else {
+		webhookSecret = process.env.RAZORPAY_WEBHOOK_SECRET_SWIMMING || webhookSecret
+	}
+
 	if (!webhookSecret) return res.status(500).send('Webhook secret not configured')
 	const signature = req.headers['x-razorpay-signature']
 	if (!signature) return res.status(400).send('Missing signature')
@@ -1440,11 +1484,8 @@ export const razorpayWebhook = asyncHandler(async (req, res) => {
 
 	if (expected !== signature) return res.status(400).send('Invalid signature')
 
-	const event = req.body
 	const eventType = String(event?.event || '')
 	if (eventType === 'payment.captured') {
-		const entity = event?.payload?.payment?.entity
-		const providerOrderId = entity?.order_id
 		const providerPaymentId = entity?.id
 		if (providerOrderId && providerPaymentId) {
 			const paymentDoc = await Payment.findOne({ providerOrderId })
