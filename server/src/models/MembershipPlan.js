@@ -18,7 +18,7 @@ const membershipPlanSchema = new mongoose.Schema(
 		planName: { type: String, required: true, trim: true },
 		type: {
 			type: String,
-			enum: ['summer', 'monthly', 'yearly', 'family', 'public'],
+			enum: ['summer', 'monthly', 'yearly', 'family', 'public', 'stock'],
 			required: true,
 			index: true,
 		},
@@ -35,8 +35,12 @@ const membershipPlanSchema = new mongoose.Schema(
 		durationInDays: { type: Number, min: 1 },
 		durationInMinutes: { type: Number, min: 1 },
 
-		basePrice: { type: Number, required: true, min: 0 },
+		basePrice: { type: Number, min: 0 },
+		rentalPrice: { type: Number, min: 0 },
+		buyingPrice: { type: Number, min: 0 },
 		originalPrice: { type: Number, min: 0 },
+		stockType: { type: String, enum: ['rental', 'buying'], index: true },
+		stockCount: { type: Number, default: 0 },
 		categoryPrices: { type: [categoryPriceSchema], default: [] },
 
 		maxMembers: { type: Number, min: 1 },

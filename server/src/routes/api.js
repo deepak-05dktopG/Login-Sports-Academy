@@ -4,7 +4,7 @@
  */
 
 import express from 'express';
-import { adminLogin, adminMe } from '../controllers/adminAuthController.js';
+import { adminLogin, adminMe, getAllAdmins, createAdminAccount, updateAdminAccount, deleteAdminAccount, revealAdminPassword, forgotPasswordRequest, verifyForgotOtp } from '../controllers/adminAuthController.js';
 import requireAdminAuth from '../middleware/requireAdminAuth.js';
 import {
   createFeedback,
@@ -14,6 +14,7 @@ import {
   deleteFeedback,
   getFeedbackStats
 } from '../controllers/feedbackController.js';
+import Settings from '../models/Settings.js';
 import {
   createPost,
   getAllPosts,
@@ -76,6 +77,13 @@ const router = express.Router();
 // Admin auth
 router.post('/admin/login', adminLogin);
 router.get('/admin/me', requireAdminAuth, adminMe);
+router.get('/admin/accounts', requireAdminAuth, getAllAdmins);
+router.post('/admin/accounts', requireAdminAuth, createAdminAccount);
+router.put('/admin/accounts/:id', requireAdminAuth, updateAdminAccount);
+router.delete('/admin/accounts/:id', requireAdminAuth, deleteAdminAccount);
+router.get('/admin/accounts/:id/password', requireAdminAuth, revealAdminPassword);
+router.post('/admin/forgot-password', forgotPasswordRequest);
+router.post('/admin/verify-otp', verifyForgotOtp);
 
 // Feedback routes
 // Public routes
@@ -160,5 +168,29 @@ router.delete('/daily-tracker', requireAdminAuth, deleteDailyTrackerByDate);
 
 // WhatsApp notification routes
 router.use('/whatsapp', whatsappRoutes);
+
+// Generic Settings routes
+router.get('/settings/:key', async (req, res) => {
+  try {
+    const setting = await Settings.findOne({ key: req.params.key });
+    res.json({ success: true, value: setting ? setting.value : null });
+  } catch (err) {
+    res.status(500).json({ success: false, message: err.message });
+  }
+});
+
+router.post('/admin/settings/:key', requireAdminAuth, async (req, res) => {
+  try {
+    const { value } = req.body;
+    const setting = await Settings.findOneAndUpdate(
+      { key: req.params.key },
+      { value },
+      { new: true, upsert: true }
+    );
+    res.json({ success: true, data: setting });
+  } catch (err) {
+    res.status(500).json({ success: false, message: err.message });
+  }
+});
 
 export default router;

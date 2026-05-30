@@ -242,7 +242,12 @@ const computeAmount = ({ plan, selection }) => {
 
 	if (type === 'public') {
 		if (!Number.isFinite(quantity) || quantity < 1) return { ok: false, message: 'quantity must be >= 1' }
-		return { ok: true, amount: plan.basePrice * quantity, computed: { quantity } }
+		
+		const startTime = selection?.publicSlot?.startTime;
+		const endTime = selection?.publicSlot?.endTime;
+		const hours = getDurationInHours(startTime, endTime);
+		
+		return { ok: true, amount: plan.basePrice * quantity * hours, computed: { quantity, hours } }
 	}
 
 	if (plan.categoryRequired) {
@@ -336,6 +341,28 @@ const isValidTimeHHMM = value => {
 	return Number.isFinite(h) && Number.isFinite(m) && h >= 0 && h <= 23 && m >= 0 && m <= 59
 };
 
+// Calculates duration in hours between start and end times in HH:MM format
+const getDurationInHours = (startStr, endStr) => {
+	if (!startStr) return 1;
+	if (!endStr) return 1;
+	
+	const [startH, startM] = startStr.split(':').map(Number);
+	const [endH, endM] = endStr.split(':').map(Number);
+	
+	if (isNaN(startH) || isNaN(startM) || isNaN(endH) || isNaN(endM)) return 1;
+	
+	const startMinutes = startH * 60 + startM;
+	let endMinutes = endH * 60 + endM;
+	
+	if (endMinutes < startMinutes) {
+		endMinutes += 24 * 60; // Over midnight
+	}
+	
+	const diffMinutes = endMinutes - startMinutes;
+	const hours = diffMinutes / 60;
+	return hours > 0 ? hours : 1;
+};
+
 // Prepares an offline (cash) membership draft: validates member details, calculates pricing without gateway fees
 const prepareOfflineMembershipDraft = ({ plan, member, selection, familyMembers, joinDateOverride, expiryDateOverride }) => {
 	const normalizedSelection = selection || {}
@@ -408,8 +435,17 @@ const prepareOfflineMembershipDraft = ({ plan, member, selection, familyMembers,
 		if (!isValidTimeHHMM(normalizedSelection?.publicSlot?.startTime)) {
 			return { ok: false, message: 'Invalid publicSlot.startTime (use HH:MM)' }
 		}
-		if (normalizedSelection?.publicSlot?.endTime && !isValidTimeHHMM(normalizedSelection?.publicSlot?.endTime)) {
-			return { ok: false, message: 'Invalid publicSlot.endTime (use HH:MM)' }
+		if (normalizedSelection?.publicSlot?.endTime) {
+			if (!isValidTimeHHMM(normalizedSelection.publicSlot.endTime)) {
+				return { ok: false, message: 'Invalid publicSlot.endTime (use HH:MM)' }
+			}
+			const [sh, sm] = normalizedSelection.publicSlot.startTime.split(':').map(Number);
+			const [eh, em] = normalizedSelection.publicSlot.endTime.split(':').map(Number);
+			const startM = sh * 60 + sm;
+			const endM = eh * 60 + em;
+			if (endM <= startM) {
+				return { ok: false, message: 'End time must be after start time' }
+			}
 		}
 		const slotRes = resolvePublicSlot(normalizedSelection)
 		if (!slotRes.ok) return { ok: false, message: slotRes.message }
@@ -511,8 +547,17 @@ const prepareMembershipDraft = ({ plan, member, selection, familyMembers }) => {
 		if (!isValidTimeHHMM(normalizedSelection?.publicSlot?.startTime)) {
 			return { ok: false, message: 'Invalid publicSlot.startTime (use HH:MM)' }
 		}
-		if (normalizedSelection?.publicSlot?.endTime && !isValidTimeHHMM(normalizedSelection?.publicSlot?.endTime)) {
-			return { ok: false, message: 'Invalid publicSlot.endTime (use HH:MM)' }
+		if (normalizedSelection?.publicSlot?.endTime) {
+			if (!isValidTimeHHMM(normalizedSelection.publicSlot.endTime)) {
+				return { ok: false, message: 'Invalid publicSlot.endTime (use HH:MM)' }
+			}
+			const [sh, sm] = normalizedSelection.publicSlot.startTime.split(':').map(Number);
+			const [eh, em] = normalizedSelection.publicSlot.endTime.split(':').map(Number);
+			const startM = sh * 60 + sm;
+			const endM = eh * 60 + em;
+			if (endM <= startM) {
+				return { ok: false, message: 'End time must be after start time' }
+			}
 		}
 		const slotRes = resolvePublicSlot(normalizedSelection)
 		if (!slotRes.ok) return { ok: false, message: slotRes.message }
@@ -687,7 +732,7 @@ const inferLegacyType = doc => {
 const normalizePlanForClient = planDoc => {
 	const raw = planDoc?.toObject ? planDoc.toObject({ virtuals: false }) : planDoc
 	const type = raw?.type || inferLegacyType(raw)
-	return {
+	const result = {
 		...raw,
 		planName: raw?.planName || raw?.name || 'Membership Plan',
 		type,
@@ -697,6 +742,11 @@ const normalizePlanForClient = planDoc => {
 		categoryPrices: Array.isArray(raw?.categoryPrices) ? raw.categoryPrices : [],
 		isActive: typeof raw?.isActive === 'boolean' ? raw.isActive : true,
 	}
+	if (result.type === 'stock') {
+		result.allocatedCount = raw?.allocatedCount !== undefined ? raw.allocatedCount : 0;
+		result.totalStockCount = raw?.totalStockCount !== undefined ? raw.totalStockCount : (raw?.stockCount || 0);
+	}
+	return result;
 };
 
 // Admin: Create a new membership plan
@@ -716,7 +766,7 @@ export const updatePlan = asyncHandler(async (req, res) => {
 export const deletePlan = asyncHandler(async (req, res) => {
 	const plan = await MembershipPlan.findByIdAndDelete(req.params.id);
 	if (!plan) return res.status(404).json({ success: false, message: 'Plan not found' });
-	res.json({ success: true, message: 'Plan deleted successfully' });
+	res.json({ success: true, message: 'Plan deleted' });
 });
 
 // Returns all membership plans with pricing, charges config, and test mode info for the frontend
@@ -726,11 +776,48 @@ export const listPlans = asyncHandler(async (req, res) => {
 		const query = {}
 		if (typeof isActive !== 'undefined') query.isActive = isActive === 'true'
 		const plans = await MembershipPlan.find(query).sort({ basePrice: 1, price: 1 })
+		
+		// Fetch all DailyTracker entries to compute allocated stock counts
+		const dailyTrackerEntries = await DailyTracker.find({});
+		const normalizedPlans = plans.map(planDoc => {
+			const plan = planDoc.toObject ? planDoc.toObject({ virtuals: false }) : planDoc;
+			
+			// Normalize standard fields
+			plan.planName = plan.planName || plan.name || 'Membership Plan';
+			plan.type = plan.type || 'monthly';
+			plan.serviceType = plan.serviceType || 'swimming';
+			plan.basePrice = typeof plan.basePrice === 'number' ? plan.basePrice : typeof plan.price === 'number' ? plan.price : 0;
+			plan.categoryRequired = Boolean(plan.categoryRequired);
+			plan.categoryPrices = Array.isArray(plan.categoryPrices) ? plan.categoryPrices : [];
+			plan.isActive = typeof plan.isActive === 'boolean' ? plan.isActive : true;
+			
+			if (plan.type === 'stock') {
+				let allocated = 0;
+				const targetName = plan.planName.toLowerCase();
+				const stockType = plan.stockType; // 'rental' or 'buying'
+				
+				for (const entry of dailyTrackerEntries) {
+					const entryStockType = entry.type === '1 Hour Order' ? 'rental' : 'buying';
+					if (entryStockType === stockType && entry.stockItems && Array.isArray(entry.stockItems)) {
+						for (const sItem of entry.stockItems) {
+							if (sItem.name.toLowerCase() === targetName) {
+								allocated += (sItem.quantity || 0);
+							}
+						}
+					}
+				}
+				
+				plan.allocatedCount = allocated;
+				plan.totalStockCount = (plan.stockCount || 0) + allocated;
+			}
+			return plan;
+		});
+
 		const charges = getPaymentChargesConfig()
 		const testAmountInr = getForcedTestAmountInr()
 		res.json({
 			success: true,
-			data: plans.map(normalizePlanForClient),
+			data: normalizedPlans.map(normalizePlanForClient),
 			meta: {
 				paymentCharges: {
 					commissionPct: charges.commissionPct,
@@ -1315,7 +1402,7 @@ export const verifyRazorpayPayment = asyncHandler(async (req, res) => {
 		await DailyTracker.create({
 			type: out?.plan?.planName || out?.plan?.name || 'Registration',
 			name: paymentDoc?.memberDraft?.name || 'New Member',
-			paymentType: 'gpay',
+			paymentType: 'razorpay',
 			amount: finalAmount,
 			date: indiaNow.date,
 			time: indiaNow.time,
@@ -1327,7 +1414,7 @@ export const verifyRazorpayPayment = asyncHandler(async (req, res) => {
 		try {
 			await incrementCashBox({
 				amount: finalAmount,
-				paymentType: 'gpay',
+				paymentType: 'razorpay',
 				entryType: out?.plan?.planName || out?.plan?.name || 'Registration',
 				entryCountDelta: 1,
 				entryTotalDelta: finalAmount,
@@ -1376,7 +1463,7 @@ export const razorpayWebhook = asyncHandler(async (req, res) => {
 							await DailyTracker.create({
 								type: out?.plan?.planName || out?.plan?.name || 'Registration',
 								name: paymentDoc?.memberDraft?.name || 'New Member',
-								paymentType: 'gpay',
+								paymentType: 'razorpay',
 								amount: finalAmount,
 								date: indiaNow.date,
 								time: indiaNow.time,
@@ -1388,7 +1475,7 @@ export const razorpayWebhook = asyncHandler(async (req, res) => {
 							try {
 								await incrementCashBox({
 									amount: finalAmount,
-									paymentType: 'gpay',
+									paymentType: 'razorpay',
 									entryType: out?.plan?.planName || out?.plan?.name || 'Registration',
 									entryCountDelta: 1,
 									entryTotalDelta: finalAmount,

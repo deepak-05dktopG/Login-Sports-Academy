@@ -34,6 +34,7 @@ import WeeklyWorksheets from './pages/AdminPanel/WeeklyWorksheets'
 import PublicMemberCard from './pages/PublicMemberCard'
 import ManagePlans from './pages/AdminPanel/ManagePlans'
 import WhatsAppStatus from './pages/AdminPanel/WhatsAppStatus'
+import ManageAdmins from './pages/AdminPanel/ManageAdmins'
 
 
 
@@ -151,6 +152,7 @@ function App() {
             <Route path="/admin/daily-tracker" element={<DailyTracker />} />
             <Route path="/admin/manage-plans" element={<ManagePlans />} />
             <Route path="/admin/whatsapp-status" element={<WhatsAppStatus />} />
+            <Route path="/admin/manage-admins" element={<ManageAdmins />} />
 
             {/* Fallbacks to avoid blank pages on removed/unknown routes */}
             <Route path="/admin/*" element={<Navigate to="/admin/dashboard" replace />} />

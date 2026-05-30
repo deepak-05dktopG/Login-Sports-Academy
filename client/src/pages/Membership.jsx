@@ -79,6 +79,27 @@ const safeReadJson = async res => {
   }
 };
 
+const getDurationInHours = (startStr, endStr) => {
+  if (!startStr) return 1
+  if (!endStr) return 1
+  
+  const [startH, startM] = startStr.split(':').map(Number)
+  const [endH, endM] = endStr.split(':').map(Number)
+  
+  if (isNaN(startH) || isNaN(startM) || isNaN(endH) || isNaN(endM)) return 1
+  
+  const startMinutes = startH * 60 + startM
+  let endMinutes = endH * 60 + endM
+  
+  if (endMinutes < startMinutes) {
+    endMinutes += 24 * 60
+  }
+  
+  const diffMinutes = endMinutes - startMinutes
+  const hours = diffMinutes / 60
+  return hours > 0 ? hours : 1
+}
+
 const PLAN_TYPE_LABEL = {
   summer: 'Summer Camp',
   monthly: 'Monthly Training',
@@ -181,6 +202,8 @@ const Membership = () => {
   const [step, setStep] = useState(STEP.PLAN)
   const [selectedService, setSelectedService] = useState('swimming')
 
+  const [poolStatus, setPoolStatus] = useState({ isFull: false, timing: '' })
+
   const [plans, setPlans] = useState([])
   const [loadingPlans, setLoadingPlans] = useState(false)
   const [selectedPlanId, setSelectedPlanId] = useState('')
@@ -240,7 +263,8 @@ const Membership = () => {
 
     if (selectedPlan.type === 'public') {
       const qty = Number(selection.quantity || 1)
-      return (selectedPlan.basePrice || 0) * (Number.isFinite(qty) && qty > 0 ? qty : 1)
+      const hours = getDurationInHours(selection.publicSlot.startTime, selection.publicSlot.endTime)
+      return (selectedPlan.basePrice || 0) * (Number.isFinite(qty) && qty > 0 ? qty : 1) * hours
     }
 
     if (selectedPlan.categoryRequired) {
@@ -330,6 +354,18 @@ const Membership = () => {
     return end
   }, [selectedPlan, selection.publicSlot])
 
+  const fetchPoolStatus = async () => {
+    try {
+      const res = await fetch(`${apiBase}/settings/pool_full_status`)
+      const parsed = await safeReadJson(res)
+      if (parsed.ok && parsed.data?.success && parsed.data?.value) {
+        setPoolStatus(parsed.data.value)
+      }
+    } catch (err) {
+      console.error("Failed to load pool status", err)
+    }
+  }
+
   /**
     * Fetch active membership plans and meta info (payment charges, test amount).
    */
@@ -387,12 +423,17 @@ const Membership = () => {
         })
         if (!hasSelected) {
           const firstPublic = sorted.find(/**
-           * Prefer defaulting to a Public Batch plan if available.
+           * Prefer defaulting to a Public Batch plan if available and not full.
            */
           p => {
-            return p?.type === 'public';
+            const isFull = p?.type === 'public' && (p?.serviceType || 'swimming') === 'swimming' && poolStatus.isFull
+            return p?.type === 'public' && !isFull;
           })
-          setSelectedPlanId((firstPublic || sorted[0])._id)
+          const firstSelectable = firstPublic || sorted.find(p => {
+            const isFull = p?.type === 'public' && (p?.serviceType || 'swimming') === 'swimming' && poolStatus.isFull
+            return !isFull;
+          })
+          setSelectedPlanId((firstSelectable || sorted[0])._id)
         }
       }
     } catch (e) {
@@ -423,10 +464,11 @@ const Membership = () => {
   };
 
   useEffect(/**
-   * Initial load: fetch plans once.
+   * Initial load: fetch plans and pool status once.
    */
   () => {
     fetchPlans()
+    fetchPoolStatus()
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [])
 
@@ -460,15 +502,20 @@ const Membership = () => {
       return p._id === selectedPlanId;
     })) {
       const firstPublic = plans.find(/**
-       * Prefer Public Batch as the default choice.
+       * Prefer Public Batch as the default choice and not full.
        */
       p => {
-        return p?.type === 'public';
+        const isFull = p?.type === 'public' && (p?.serviceType || 'swimming') === 'swimming' && poolStatus.isFull
+        return p?.type === 'public' && !isFull;
       })
-      setSelectedPlanId((firstPublic || plans[0])._id)
+      const firstSelectable = firstPublic || plans.find(p => {
+        const isFull = p?.type === 'public' && (p?.serviceType || 'swimming') === 'swimming' && poolStatus.isFull
+        return !isFull;
+      })
+      setSelectedPlanId((firstSelectable || plans[0])._id)
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [plans])
+  }, [plans, poolStatus.isFull])
 
   useEffect(/**
    * If a verified payment result arrives, jump to the Done step.
@@ -484,6 +531,11 @@ const Membership = () => {
   const validateStep = targetStep => {
     if (targetStep >= STEP.DETAILS) {
       if (!selectedPlan) return 'Select a plan to continue'
+      
+      const isSelectedPlanFull = selectedPlan.type === 'public' && (selectedPlan.serviceType || 'swimming') === 'swimming' && poolStatus.isFull;
+      if (isSelectedPlanFull) {
+        return 'Swimming Pool is currently FULL for 1-hour entries! Please choose another service or plan.'
+      }
     }
 
     if (targetStep >= STEP.CONFIRM) {
@@ -538,6 +590,15 @@ const Membership = () => {
       if (selectedPlan.type === 'public') {
         if (!selection.publicSlot?.date) return 'Select a date'
         if (!selection.publicSlot?.startTime) return 'Select a start time'
+        if (selection.publicSlot?.endTime) {
+          const [sh, sm] = selection.publicSlot.startTime.split(':').map(Number);
+          const [eh, em] = selection.publicSlot.endTime.split(':').map(Number);
+          const startM = sh * 60 + sm;
+          const endM = eh * 60 + em;
+          if (endM <= startM) {
+            return 'End time must be after start time';
+          }
+        }
         const qty = Number(selection.quantity)
         if (!Number.isFinite(qty) || qty < 1) return 'People must be at least 1'
       }
@@ -1182,6 +1243,35 @@ const Membership = () => {
                         </button>
                       </div>
 
+                      {selectedService === 'swimming' && poolStatus.isFull && (
+                        <div style={{
+                          background: 'rgba(239, 68, 68, 0.1)',
+                          border: '1px solid rgba(239, 68, 68, 0.3)',
+                          borderRadius: '12px',
+                          padding: '16px',
+                          marginBottom: '20px',
+                          color: '#fca5a5',
+                          fontSize: '0.95rem',
+                          display: 'flex',
+                          flexDirection: 'column',
+                          gap: '6px',
+                          boxShadow: '0 4px 12px rgba(239, 68, 68, 0.1)'
+                        }}>
+                          <div style={{ display: 'flex', alignItems: 'center', gap: '8px', fontWeight: 700, color: '#ef4444' }}>
+                            <span style={{ fontSize: '1.2rem' }}>⚠️</span>
+                            <span>Swimming Pool is currently FULL for 1-hour entries!</span>
+                          </div>
+                          <div style={{ color: 'rgba(255, 255, 255, 0.8)', fontSize: '0.9rem', marginLeft: '26px' }}>
+                            Online registration for 1-hour entries is temporarily disabled.
+                            {poolStatus.timing && (
+                              <span style={{ display: 'block', marginTop: '4px', fontWeight: 600, color: '#fca5a5' }}>
+                                🕒 Closed timings: {poolStatus.timing}
+                              </span>
+                            )}
+                          </div>
+                        </div>
+                      )}
+
                       <div style={{ color: 'rgba(255,255,255,0.78)', fontSize: 12, marginTop: 6 }}>
                         Showing {selectedService === 'swimming' ? '🏊 Swimming' : '🏸 Badminton'} plans
                       </div>
@@ -1196,24 +1286,21 @@ const Membership = () => {
 
                       {plans.filter(p => (p.serviceType || 'swimming') === selectedService).length ? (
                         <div className="membership-plan-grid mt-3">
-                          {plans.filter(p => (p.serviceType || 'swimming') === selectedService).map(/**
-                              * Render the plan selection cards.
-                           */
-                          p => {
+                          {plans.filter(p => (p.serviceType || 'swimming') === selectedService).map(p => {
                             const isSelected = p._id === selectedPlanId
                             const label = p.planName || p.name || 'Membership Plan'
                             const typeLabel = PLAN_TYPE_LABEL[p.type] || p.type || 'Plan'
+                            const isFull = p.type === 'public' && (p.serviceType || 'swimming') === 'swimming' && poolStatus.isFull
 
                             return (
                               <button
                                 key={p._id}
                                 type="button"
                                 className={`membership-plan-card ${isSelected ? 'membership-plan-card--active' : ''}`}
-                                onClick={/**
-                                 * Select this plan.
-                                 */
-                                () => {
-                                  return setSelectedPlanId(p._id);
+                                disabled={isFull}
+                                style={isFull ? { opacity: 0.5, cursor: 'not-allowed', position: 'relative' } : {}}
+                                onClick={() => {
+                                  if (!isFull) setSelectedPlanId(p._id);
                                 }}
                               >
                                 <div className="membership-plan-top">
@@ -1223,10 +1310,16 @@ const Membership = () => {
                                       {typeLabel}{planCardMeta(p) ? ` • ${planCardMeta(p)}` : ''}
                                     </div>
                                   </div>
-                                  <div className="membership-plan-price">{planCardPrice(p)}</div>
+                                  <div className="membership-plan-price">
+                                    {isFull ? (
+                                      <span style={{ color: '#ef4444', fontWeight: 900 }}>POOL FULL</span>
+                                    ) : planCardPrice(p)}
+                                  </div>
                                 </div>
                                 {p.type === 'public' ? (
-                                  <div className="membership-plan-tag">Public Batch</div>
+                                  <div className="membership-plan-tag" style={isFull ? { background: '#ef4444', color: '#fff' } : {}}>
+                                    {isFull ? 'Closed' : 'Public Batch'}
+                                  </div>
                                 ) : p.type === 'family' ? (
                                   <div className="membership-plan-tag">Family</div>
                                 ) : null}

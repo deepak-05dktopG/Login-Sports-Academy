@@ -22,6 +22,10 @@ const adminSchema = new mongoose.Schema(
 			type: String,
 			required: true,
 		},
+		passwordEncrypted: {
+			type: String,
+			required: false,
+		},
 		role: {
 			type: String,
 			enum: ['admin', 'superadmin'],

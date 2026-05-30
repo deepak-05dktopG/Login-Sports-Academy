@@ -3,10 +3,12 @@
  * Non-tech note: This is the admin home page with shortcuts to admin tools.
  */
 
-import { useEffect } from "react";
+import { useEffect, useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import { isAdminAuthenticated } from "../../utils/adminAuth";
 import AdminLayout from "../../components/adminPanel/AdminLayout";
+import api from "../../api/api";
+import Swal from "sweetalert2";
 import {
   FaArrowRight,
   FaBookmark,
@@ -16,6 +18,7 @@ import {
   FaQrcode,
   FaUsers,
   FaWhatsapp,
+  FaUserShield,
 } from "react-icons/fa";
 import { formatHHmmTo12Hour } from "../../utils/dateTime";
 
@@ -30,6 +33,48 @@ const AdminDashboard = () => {
       navigate("/admin");
     }
   }, [navigate]);
+
+  const [isPoolFull, setIsPoolFull] = useState(false);
+  const [poolFullTiming, setPoolFullTiming] = useState("");
+  const [savingPoolStatus, setSavingPoolStatus] = useState(false);
+
+  useEffect(() => {
+    const fetchPoolStatus = async () => {
+      try {
+        const { data } = await api.get('/settings/pool_full_status');
+        if (data.success && data.value) {
+          setIsPoolFull(data.value.isFull || false);
+          setPoolFullTiming(data.value.timing || "");
+        }
+      } catch (err) {
+        console.error("Failed to load pool full status", err);
+      }
+    };
+    fetchPoolStatus();
+  }, []);
+
+  const savePoolStatus = async () => {
+    setSavingPoolStatus(true);
+    try {
+      await api.post('/admin/settings/pool_full_status', {
+        value: {
+          isFull: isPoolFull,
+          timing: poolFullTiming
+        }
+      });
+      Swal.fire({
+        title: 'Saved!',
+        text: 'Pool status updated successfully',
+        icon: 'success',
+        timer: 1500,
+        showConfirmButton: false
+      });
+    } catch (err) {
+      Swal.fire('Error', err.response?.data?.message || 'Failed to update pool status', 'error');
+    } finally {
+      setSavingPoolStatus(false);
+    }
+  };
 
   const dashboardCards = [
     {
@@ -112,6 +157,14 @@ const AdminDashboard = () => {
       color: "#25D366",
       count: "",
     },
+    {
+      title: "Admin Setup",
+      description: "Manage admin login credentials and roles",
+      icon: <FaUserShield />,
+      path: "/admin/manage-admins",
+      color: "#FFB800",
+      count: "",
+    },
   ];
 
   return (
@@ -120,25 +173,107 @@ const AdminDashboard = () => {
         <div style={{ padding: "0 40px 60px 40px", maxWidth: "1400px", margin: "0 auto" }}>
           
           {/* Welcome Section */}
-          <div style={{ marginBottom: "50px", display: "flex", alignItems: "center", gap: "20px" }}>
-            <div style={{ width: "80px", height: "80px", borderRadius: "20px", background: "linear-gradient(135deg, rgba(0,212,255,0.2), rgba(255,184,0,0.2))", display: "flex", alignItems: "center", justifyContent: "center", border: "1px solid rgba(255,255,255,0.1)" }}>
-              <img src="/assets/Logo.png" alt="Logo" style={{ width: "50px", filter: "drop-shadow(0 0 10px rgba(0,212,255,0.5))" }} />
+          <div style={{ marginBottom: "50px", display: "flex", alignItems: "center", justifyContent: "space-between", gap: "20px", flexWrap: "wrap" }}>
+            <div style={{ display: "flex", alignItems: "center", gap: "20px" }}>
+              <div style={{ width: "80px", height: "80px", borderRadius: "20px", background: "linear-gradient(135deg, rgba(0,212,255,0.2), rgba(255,184,0,0.2))", display: "flex", alignItems: "center", justifyContent: "center", border: "1px solid rgba(255,255,255,0.1)" }}>
+                <img src="/assets/Logo.png" alt="Logo" style={{ width: "50px", filter: "drop-shadow(0 0 10px rgba(0,212,255,0.5))" }} />
+              </div>
+              <div>
+                <h1
+                  style={{
+                    color: "#fff",
+                    fontSize: "clamp(2rem, 4vw, 2.8rem)",
+                    fontWeight: 900,
+                    margin: 0,
+                    letterSpacing: "-1px"
+                  }}
+                >
+                  Command <span style={{ color: "#00D4FF" }}>Center</span>
+                </h1>
+                <p style={{ color: "rgba(255, 255, 255, 0.5)", fontSize: "1.1rem", margin: "5px 0 0 0" }}>
+                  Login Sports Academy Management Dashboard
+                </p>
+              </div>
             </div>
-            <div>
-              <h1
+
+            {/* POOL FULL STATUS CONTROLLER */}
+            <div style={{
+              background: "rgba(15, 23, 42, 0.6)",
+              border: isPoolFull ? "1.5px solid #ef4444" : "1.5px solid rgba(255,255,255,0.1)",
+              borderRadius: "16px",
+              padding: "16px 20px",
+              display: "flex",
+              flexDirection: "column",
+              gap: "12px",
+              maxWidth: "400px",
+              width: "100%",
+              boxSizing: "border-box",
+              boxShadow: isPoolFull ? "0 0 20px rgba(239, 68, 68, 0.15)" : "none",
+              transition: "all 0.3s ease",
+              backdropFilter: "blur(4px)"
+            }}>
+              <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between" }}>
+                <label style={{ display: "flex", alignItems: "center", gap: "10px", color: "#fff", fontWeight: 700, fontSize: "0.95rem", cursor: "pointer", margin: 0 }}>
+                  <input 
+                    type="checkbox" 
+                    checked={isPoolFull} 
+                    onChange={(e) => setIsPoolFull(e.target.checked)} 
+                    style={{ 
+                      width: "18px", 
+                      height: "18px", 
+                      accentColor: "#ef4444", 
+                      cursor: "pointer" 
+                    }} 
+                  />
+                  <span>🏊 Swim Pool is FULL</span>
+                </label>
+                
+                {isPoolFull && (
+                  <span style={{ fontSize: "10px", fontWeight: 900, color: "#fff", background: "#ef4444", padding: "2px 8px", borderRadius: "99px", textTransform: "uppercase" }}>
+                    FULL
+                  </span>
+                )}
+              </div>
+
+              {isPoolFull && (
+                <div style={{ display: "flex", gap: "8px" }}>
+                  <input
+                    type="text"
+                    value={poolFullTiming}
+                    onChange={(e) => setPoolFullTiming(e.target.value)}
+                    placeholder="Timing, e.g. 4 PM - 6 PM, or Until 5 PM"
+                    style={{
+                      flex: 1,
+                      padding: "8px 12px",
+                      borderRadius: "8px",
+                      border: "1px solid rgba(255,255,255,0.2)",
+                      background: "rgba(10, 15, 30, 0.8)",
+                      color: "#fff",
+                      fontSize: "0.9rem",
+                      boxSizing: "border-box"
+                    }}
+                  />
+                </div>
+              )}
+
+              <button
+                onClick={savePoolStatus}
+                disabled={savingPoolStatus}
                 style={{
-                  color: "#fff",
-                  fontSize: "clamp(2rem, 4vw, 2.8rem)",
-                  fontWeight: 900,
-                  margin: 0,
-                  letterSpacing: "-1px"
+                  width: "100%",
+                  padding: "8px 16px",
+                  borderRadius: "8px",
+                  border: "none",
+                  fontWeight: 700,
+                  fontSize: "0.9rem",
+                  cursor: "pointer",
+                  background: isPoolFull ? "#ef4444" : "#00D4FF",
+                  color: isPoolFull ? "#fff" : "#000",
+                  transition: "all 0.2s"
                 }}
               >
-                Command <span style={{ color: "#00D4FF" }}>Center</span>
-              </h1>
-              <p style={{ color: "rgba(255, 255, 255, 0.5)", fontSize: "1.1rem", margin: "5px 0 0 0" }}>
-                Login Sports Academy Management Dashboard
-              </p>
+                {savingPoolStatus ? "Saving..." : "Save Pool Status"}
+              </button>
             </div>
           </div>
 
