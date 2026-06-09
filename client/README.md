@@ -1,4 +1,4 @@
-# Bluefins Aquatic Solutions - Frontend
+# Login sports Academy - Frontend
 
 Modern React application for Bluefins Swimming Academy management system.
 
