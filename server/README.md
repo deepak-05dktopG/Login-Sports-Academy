@@ -1,4 +1,4 @@
-# Bluefins Aquatic Solutions - Backend Server
+# Login Sports Academy - Backend Server
 
 Backend API for Bluefins Swimming Academy management system.
 
