@@ -1,4 +1,4 @@
-# Blue Fins Project (Client + Server)
+# Login Sports Academy Project (Client + Server)
 
 This project has **two parts**:
 
